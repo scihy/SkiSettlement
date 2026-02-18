@@ -1,0 +1,114 @@
+@page "/rozliczenia-instruktorow"
+@rendermode InteractiveServer
+@inject IInstructorService InstructorService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+
+<PageTitle>Rozliczenia instruktorów - SkiSettlement</PageTitle>
+
+<div class="page-hero">
+    <h1>Rozliczenia instruktorów</h1>
+    <p>Pensja podstawowa + godziny × stawka. Podsumowanie z podziałem na tygodnie i export do Excel.</p>
+</div>
+
+<MudPaper Class="app-card pa-4" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-3">Dodaj instruktora</MudText>
+    <EditForm Model="_newInstructor" FormName="addInstructorForm" OnValidSubmit="AddInstructor">
+        <MudStack Row="true" Spacing="2" Class="mb-3 trip-form-row" Wrap="Wrap.Wrap">
+            <MudTextField @bind-Value="_newInstructor.FirstName" Label="Imię" Variant="Variant.Outlined" Class="trip-form-field" Required="true" RequiredError="Podaj imię" />
+            <MudTextField @bind-Value="_newInstructor.LastName" Label="Nazwisko" Variant="Variant.Outlined" Class="trip-form-field" Required="true" RequiredError="Podaj nazwisko" />
+            <MudNumericField @bind-Value="_newInstructor.BaseSalary" Label="Pensja podstawowa (zł)" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+            <MudNumericField @bind-Value="_newInstructor.HourlyRate" Label="Stawka za godzinę (zł)" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">Dodaj</MudButton>
+        </MudStack>
+    </EditForm>
+</MudPaper>
+
+<MudPaper Class="app-card pa-4" Elevation="2">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h6">Lista instruktorów</MudText>
+        <MudButton Href="/api/instructors/export" Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Target="_blank">Export wszystkich do Excel</MudButton>
+    </MudStack>
+
+    @if (_instructors is null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else if (_instructors.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">Brak instruktorów. Uzupełnij formularz powyżej i kliknij „Dodaj”.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_instructors" Hover="true" Striped="true" Breakpoint="Breakpoint.Sm" Elevation="0" RowClick="RowClick">
+            <HeaderContent>
+                <MudTh>Imię i nazwisko</MudTh>
+                <MudTh Style="text-align: right;">Pensja podstawowa</MudTh>
+                <MudTh Style="text-align: right;">Godziny</MudTh>
+                <MudTh Style="text-align: right;">Stawka/h</MudTh>
+                <MudTh Style="text-align: right;">Razem</MudTh>
+                <MudTh Style="width: 120px;"></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                @{ var inst = context; }
+                <MudTd DataLabel="Imię i nazwisko">@context.FirstName @context.LastName</MudTd>
+                <MudTd DataLabel="Pensja" Style="text-align: right;">@context.BaseSalary.ToString("N2") zł</MudTd>
+                <MudTd DataLabel="Godziny" Style="text-align: right;">@context.TotalHours.ToString("N1")</MudTd>
+                <MudTd DataLabel="Stawka" Style="text-align: right;">@context.HourlyRate.ToString("N2") zł</MudTd>
+                <MudTd DataLabel="Razem" Style="text-align: right;"><strong>@context.TotalAmount.ToString("N2") zł</strong></MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" Href="@($"/rozliczenia-instruktorow/{context.Id}")" Size="Size.Small" title="Podsumowanie" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Href="@($"/rozliczenia-instruktorow/edytuj/{context.Id}")" Size="Size.Small" title="Edytuj" />
+                    <span @onclick:stopPropagation="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteClick(inst))" />
+                    </span>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    private IReadOnlyList<Instructor>? _instructors;
+    private Instructor _newInstructor = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        _instructors = await InstructorService.GetAllAsync();
+        StateHasChanged();
+    }
+
+    private async Task AddInstructor()
+    {
+        if (string.IsNullOrWhiteSpace(_newInstructor.FirstName) || string.IsNullOrWhiteSpace(_newInstructor.LastName))
+            return;
+        await InstructorService.CreateAsync(_newInstructor);
+        Snackbar.Add("Instruktor dodany.", Severity.Success);
+        _newInstructor = new Instructor();
+        await Load();
+    }
+
+    private void RowClick(TableRowClickEventArgs<Instructor> args)
+    {
+        if (args.Item is { } item)
+            Navigation.NavigateTo($"/rozliczenia-instruktorow/{item.Id}");
+    }
+
+    private async Task DeleteClick(Instructor instructor)
+    {
+        var name = $"{instructor.FirstName} {instructor.LastName}";
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirmAsync", $"Czy na pewno usunąć instruktora \"{name}\"?");
+        if (confirmed)
+        {
+            await InstructorService.DeleteAsync(instructor.Id);
+            Snackbar.Add("Instruktor usunięty.", Severity.Success);
+            await Load();
+        }
+    }
+}

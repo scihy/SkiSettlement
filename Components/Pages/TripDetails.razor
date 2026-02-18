@@ -1,0 +1,341 @@
+@page "/wyjazdy/{Id:int}"
+@rendermode InteractiveServer
+@inject ITripService TripService
+@inject IExpenseService ExpenseService
+@inject IIncomeService IncomeService
+@inject ICategoryService CategoryService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_trip?.Name ?? "Wyjazd") - SkiSettlement</PageTitle>
+
+@if (_trip is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    @if (_notFound)
+    {
+        <MudAlert Severity="Severity.Warning">Nie znaleziono wyjazdu.</MudAlert>
+        <MudButton Href="/" Variant="Variant.Text" Class="mt-2">← Powrót do listy</MudButton>
+    }
+}
+else
+{
+    <MudStack Spacing="4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudButton Href="/" StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text">Wyjazdy</MudButton>
+        </MudStack>
+
+        <MudPaper Class="app-card pa-4" Elevation="2">
+            <MudStack AlignItems="AlignItems.Center" Class="trip-header-center">
+                <MudText Typo="Typo.h5" Class="trip-header-line">@_trip.Name</MudText>
+                @if (!string.IsNullOrEmpty(_trip.Destination))
+                {
+                    <MudText Typo="Typo.body1" Class="trip-header-line">Cel: @_trip.Destination</MudText>
+                }
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="trip-header-line">@_trip.DateFrom.ToString("yyyy-MM-dd") – @_trip.DateTo.ToString("yyyy-MM-dd")</MudText>
+                @if (!string.IsNullOrEmpty(_trip.Description))
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2">@_trip.Description</MudText>
+                }
+                <MudStack Row="true" Spacing="2" Justify="Justify.Center" Class="mt-2">
+                    <MudButton Href="@($"/wyjazdy/{Id}/edytuj")" Variant="Variant.Outlined" Size="Size.Small">Edytuj wyjazd</MudButton>
+                    <MudButton Href="@($"/api/trips/{Id}/export")" Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Target="_blank">Eksportuj do Excel</MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <MudGrid Spacing="3" Class="trip-details-tables">
+            <MudItem xs="12" md="6">
+                <MudPaper Class="app-card pa-4" Elevation="2" Style="height: 100%;">
+                    <MudText Typo="Typo.h6" Class="mb-3">Koszty</MudText>
+                    <EditForm Model="_newExpense" FormName="addExpenseForm" OnValidSubmit="AddExpense">
+                        <MudStack Row="true" Spacing="2" Class="mb-3 trip-form-row">
+                            <MudTextField @bind-Value="_newExpense.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
+                            <div class="trip-category-select trip-form-field">
+                                <label class="mud-input-label mud-input-label-outlined">Kategoria</label>
+                                <select value="@(_newExpense.CategoryId?.ToString() ?? "")" @onchange="OnNewExpenseCategoryChange">
+                                    <option value="">—</option>
+                                    @foreach (var cat in _categories)
+                                    {
+                                        <option value="@cat.Id">@cat.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <MudNumericField @bind-Value="_newExpense.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">Dodaj</MudButton>
+                        </MudStack>
+                    </EditForm>
+                    @if (_expenses.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Brak kosztów.</MudText>
+                    }
+                    else
+                    {
+                        @if (_editingExpenseId.HasValue)
+                        {
+                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="background: var(--mud-palette-background-grey);">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">Edytuj koszt</MudText>
+                                <MudStack Row="true" Spacing="2" Class="trip-form-row">
+                                    <MudTextField @bind-Value="_editExpense.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
+                                    <div class="trip-category-select trip-form-field">
+                                        <label class="mud-input-label mud-input-label-outlined">Kategoria</label>
+                                        <select value="@(_editExpense.CategoryId?.ToString() ?? "")" @onchange="OnEditExpenseCategoryChange">
+                                            <option value="">—</option>
+                                            @foreach (var cat in _categories)
+                                            {
+                                                <option value="@cat.Id">@cat.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <MudNumericField @bind-Value="_editExpense.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveEditExpense">Zapisz</MudButton>
+                                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditExpense">Anuluj</MudButton>
+                                </MudStack>
+                            </MudPaper>
+                        }
+                        <MudStack Spacing="3">
+                            @foreach (var group in _expensesByCategory)
+                            {
+                                <MudPaper Class="pa-3" Elevation="1" Outlined="true">
+                                    <MudText Typo="Typo.subtitle1" Class="mb-2"><strong>@group.CategoryName</strong></MudText>
+                                    <MudTable Items="@group.Items" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm" Striped="true" Hover="true">
+                                        <HeaderContent>
+                                            <MudTh>Opis</MudTh>
+                                            <MudTh Style="text-align: right;">Kwota</MudTh>
+                                            <MudTh Style="width: 100px;"></MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate>
+                                            @{ var expId = context.Id; }
+                                            <MudTd DataLabel="Opis">@context.Description</MudTd>
+                                            <MudTd DataLabel="Kwota" Style="text-align: right;">@context.Amount.ToString("N2") zł</MudTd>
+                                            <MudTd>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => StartEditExpense(expId))" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteExpense(expId))" />
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                    <MudText Typo="Typo.body2" Class="mt-1">Suma: @group.Items.Sum(e => e.Amount).ToString("N2") zł</MudText>
+                                </MudPaper>
+                            }
+                        </MudStack>
+                        <MudText Typo="Typo.subtitle1" Class="mt-2"><strong>Suma kosztów: @_totalExpenses.ToString("N2") zł</strong></MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="app-card pa-4" Elevation="2" Style="height: 100%;">
+                    <MudText Typo="Typo.h6" Class="mb-3">Przychody</MudText>
+                    <EditForm Model="_newIncome" FormName="addIncomeForm" OnValidSubmit="AddIncome">
+                        <MudStack Row="true" Spacing="2" Class="mb-3 trip-form-row">
+                            <MudTextField @bind-Value="_newIncome.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
+                            <MudNumericField @bind-Value="_newIncome.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" Size="Size.Small">Dodaj</MudButton>
+                        </MudStack>
+                    </EditForm>
+                    @if (_incomes.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Brak przychodów.</MudText>
+                    }
+                    else
+                    {
+                        @if (_editingIncomeId.HasValue)
+                        {
+                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="background: var(--mud-palette-background-grey);">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">Edytuj przychód</MudText>
+                                <MudStack Row="true" Spacing="2" Class="trip-form-row">
+                                    <MudTextField @bind-Value="_editIncome.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
+                                    <MudNumericField @bind-Value="_editIncome.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+                                    <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="SaveEditIncome">Zapisz</MudButton>
+                                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditIncome">Anuluj</MudButton>
+                                </MudStack>
+                            </MudPaper>
+                        }
+                        <MudTable Items="@_incomes" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm" Striped="true" Hover="true">
+                            <HeaderContent>
+                                <MudTh>Opis</MudTh>
+                                <MudTh Style="text-align: right;">Kwota</MudTh>
+                                <MudTh Style="width: 100px;"></MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                @{
+                                    var incId = context.Id;
+                                }
+                                <MudTd DataLabel="Opis">@context.Description</MudTd>
+                                <MudTd DataLabel="Kwota" Style="text-align: right;">@context.Amount.ToString("N2") zł</MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => StartEditIncome(incId))" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteIncome(incId))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                        <MudText Typo="Typo.subtitle1" Class="mt-2"><strong>Suma przychodów: @_totalIncomes.ToString("N2") zł</strong></MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudPaper Class="app-card pa-4" Elevation="2" Style="background: var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.h6" Class="mb-2">Bilans</MudText>
+            <MudStack Spacing="1" Class="trip-balance-breakdown">
+                <MudText Typo="Typo.body1">Przychody: <strong>@_totalIncomes.ToString("N2") zł</strong></MudText>
+                <MudText Typo="Typo.body1">Koszty: <strong>@_totalExpenses.ToString("N2") zł</strong></MudText>
+                <MudText Typo="Typo.body1">Bilans (przychody − koszty): <MudText Typo="Typo.body1" Color="@(_balance >= 0 ? Color.Success : Color.Error)"><strong>@_balance.ToString("N2") zł</strong></MudText></MudText>
+            </MudStack>
+        </MudPaper>
+    </MudStack>
+}
+
+<style>
+    .trip-header-center {
+        text-align: center;
+    }
+    .trip-header-center .mud-typography {
+        text-align: center;
+    }
+    .trip-header-line {
+        margin-top: 0 !important;
+        margin-bottom: 0.15rem !important;
+        line-height: 1.35 !important;
+    }
+    .trip-details-tables ::deep .mud-table-striped .mud-table-container .mud-table-root .mud-table-body .mud-table-row:nth-of-type(odd) {
+        background-color: rgba(0, 0, 0, 0.1) !important;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Trip? _trip;
+    private List<Expense> _expenses = new();
+    private List<Income> _incomes = new();
+    private List<ExpenseCategory> _categories = new();
+    private Expense _newExpense = new();
+    private Income _newIncome = new();
+    private int? _editingExpenseId;
+    private int? _editingIncomeId;
+    private Expense _editExpense = new();
+    private Income _editIncome = new();
+    private bool _notFound;
+    private decimal _totalExpenses => _expenses.Sum(e => e.Amount);
+    private decimal _totalIncomes => _incomes.Sum(i => i.Amount);
+    private decimal _balance => _totalIncomes - _totalExpenses;
+    private IEnumerable<(string CategoryName, List<Expense> Items)> _expensesByCategory =>
+        _expenses
+            .GroupBy(e => e.CategoryId)
+            .OrderBy(g => g.Key == null ? 1 : 0)
+            .ThenBy(g => g.First().Category?.Name ?? "—")
+            .Select(g => (
+                CategoryName: g.Key == null ? "Bez kategorii" : (g.First().Category?.Name ?? "?"),
+                Items: g.ToList()
+            ));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _trip = await TripService.GetByIdAsync(Id);
+        if (_trip is null)
+        {
+            _notFound = true;
+            return;
+        }
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _expenses = (await ExpenseService.GetByTripIdAsync(Id)).ToList();
+        _incomes = (await IncomeService.GetByTripIdAsync(Id)).ToList();
+        _categories = (await CategoryService.GetAllAsync()).ToList();
+        _newExpense = new Expense { TripId = Id };
+        _newIncome = new Income { TripId = Id };
+        StateHasChanged();
+    }
+
+    private async Task AddExpense()
+    {
+        if (string.IsNullOrWhiteSpace(_newExpense.Description)) return;
+        _newExpense.TripId = Id;
+        await ExpenseService.CreateAsync(_newExpense);
+        Snackbar.Add("Koszt dodany.", Severity.Success);
+        await LoadData();
+    }
+
+    private async Task AddIncome()
+    {
+        if (string.IsNullOrWhiteSpace(_newIncome.Description)) return;
+        _newIncome.TripId = Id;
+        await IncomeService.CreateAsync(_newIncome);
+        Snackbar.Add("Przychód dodany.", Severity.Success);
+        await LoadData();
+    }
+
+    private async Task DeleteExpense(int expenseId)
+    {
+        await ExpenseService.DeleteAsync(expenseId);
+        Snackbar.Add("Koszt usunięty.", Severity.Info);
+        await LoadData();
+    }
+
+    private async Task DeleteIncome(int incomeId)
+    {
+        await IncomeService.DeleteAsync(incomeId);
+        Snackbar.Add("Przychód usunięty.", Severity.Info);
+        await LoadData();
+    }
+
+    private void StartEditExpense(int expenseId)
+    {
+        var exp = _expenses.FirstOrDefault(e => e.Id == expenseId);
+        if (exp is null) return;
+        _editingExpenseId = expenseId;
+        _editExpense = new Expense { Id = exp.Id, TripId = exp.TripId, Description = exp.Description, Amount = exp.Amount, CategoryId = exp.CategoryId };
+    }
+
+    private void CancelEditExpense()
+    {
+        _editingExpenseId = null;
+    }
+
+    private async Task SaveEditExpense()
+    {
+        if (string.IsNullOrWhiteSpace(_editExpense.Description)) return;
+        await ExpenseService.UpdateAsync(_editExpense);
+        Snackbar.Add("Koszt zapisany.", Severity.Success);
+        _editingExpenseId = null;
+        await LoadData();
+    }
+
+    private void StartEditIncome(int incomeId)
+    {
+        var inc = _incomes.FirstOrDefault(i => i.Id == incomeId);
+        if (inc is null) return;
+        _editingIncomeId = incomeId;
+        _editIncome = new Income { Id = inc.Id, TripId = inc.TripId, Description = inc.Description, Amount = inc.Amount };
+    }
+
+    private void CancelEditIncome()
+    {
+        _editingIncomeId = null;
+    }
+
+    private async Task SaveEditIncome()
+    {
+        if (string.IsNullOrWhiteSpace(_editIncome.Description)) return;
+        await IncomeService.UpdateAsync(_editIncome);
+        Snackbar.Add("Przychód zapisany.", Severity.Success);
+        _editingIncomeId = null;
+        await LoadData();
+    }
+
+    private void OnNewExpenseCategoryChange(ChangeEventArgs e)
+    {
+        var s = e.Value?.ToString();
+        _newExpense.CategoryId = string.IsNullOrEmpty(s) ? null : int.TryParse(s, out var id) ? id : null;
+    }
+
+    private void OnEditExpenseCategoryChange(ChangeEventArgs e)
+    {
+        var s = e.Value?.ToString();
+        _editExpense.CategoryId = string.IsNullOrEmpty(s) ? null : int.TryParse(s, out var id) ? id : null;
+    }
+}

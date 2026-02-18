@@ -1,0 +1,94 @@
+@page "/"
+@rendermode InteractiveServer
+@inject ITripService TripService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+
+<PageTitle>Wyjazdy - SkiSettlement</PageTitle>
+
+<div class="page-hero">
+    <h1>Wyjazdy narciarskie</h1>
+    <p>Zarządzaj wyjazdami i rozliczeniami w jednym miejscu.</p>
+</div>
+
+<MudPaper Class="app-card pa-4" Elevation="2">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h6">Lista wyjazdów</MudText>
+        <MudButton Href="/dodaj-wyjazd" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add">
+            Dodaj wyjazd
+        </MudButton>
+    </MudStack>
+
+    @if (_tripsWithBalance is null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else if (_tripsWithBalance.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">Brak wyjazdów. Kliknij „Dodaj wyjazd”, aby dodać pierwszy.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_tripsWithBalance" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0" rowclick="RowClick">
+            <HeaderContent>
+                <MudTh>Nazwa</MudTh>
+                <MudTh>Cel</MudTh>
+                <MudTh>Od</MudTh>
+                <MudTh>Do</MudTh>
+                <MudTh Style="text-align: right;">Bilans</MudTh>
+                <MudTh Style="width: 100px;"></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                @{ var item = context; var tripItem = context.Trip; }
+                <MudTd DataLabel="Nazwa">@context.Trip.Name</MudTd>
+                <MudTd DataLabel="Cel">@context.Trip.Destination</MudTd>
+                <MudTd DataLabel="Od">@context.Trip.DateFrom.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd DataLabel="Do">@context.Trip.DateTo.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd DataLabel="Bilans" Style="text-align: right;">
+                    <MudText Color="@(context.Balance >= 0 ? Color.Success : Color.Error)">@context.Balance.ToString("N2") zł</MudText>
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" Href="@($"/wyjazdy/{context.Trip.Id}")" Size="Size.Small" title="Szczegóły" />
+                    <span @onclick:stopPropagation="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteTripClick(tripItem))" />
+                    </span>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    private IReadOnlyList<(Trip Trip, decimal Balance)>? _tripsWithBalance;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTrips();
+    }
+
+    private async Task LoadTrips()
+    {
+        _tripsWithBalance = await TripService.GetAllWithBalanceAsync();
+        StateHasChanged();
+    }
+
+    private void RowClick(TableRowClickEventArgs<(Trip Trip, decimal Balance)> args)
+    {
+        if (args.Item is { } item)
+            Navigation.NavigateTo($"/wyjazdy/{item.Trip.Id}");
+    }
+
+    private async Task DeleteTripClick(Trip trip)
+    {
+        var message = $"Czy na pewno usunąć wyjazd \"{trip.Name}\"? Zostaną usunięte wszystkie koszty i przychody.";
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirmAsync", message);
+        if (confirmed)
+        {
+            await TripService.DeleteAsync(trip.Id);
+            Snackbar.Add("Wyjazd usunięty.", Severity.Success);
+            await LoadTrips();
+        }
+    }
+}
+

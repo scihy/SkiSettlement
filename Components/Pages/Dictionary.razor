@@ -1,0 +1,182 @@
+@page "/slownik"
+@rendermode InteractiveServer
+@inject IDictionaryService DictionaryService
+@inject ICategoryService CategoryService
+@inject ISnackbar Snackbar
+
+<PageTitle>Słownik - SkiSettlement</PageTitle>
+
+<div class="page-hero">
+    <h1>Słownik</h1>
+    <p>Pozycje słownika są domyślnie dodawane do każdego nowego wyjazdu. Dla kosztów możesz przypisać kategorię.</p>
+</div>
+
+<MudStack Spacing="4">
+    <MudPaper Class="app-card pa-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3">Kategorie kosztów</MudText>
+        <EditForm Model="_newCategory" FormName="addCategoryForm" OnValidSubmit="AddCategory">
+            <MudStack Row="true" Spacing="2" Class="mb-3">
+                <MudTextField @bind-Value="_newCategory.Name" Label="Nazwa kategorii" Variant="Variant.Outlined" Style="min-width: 200px;" />
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Small">Dodaj kategorię</MudButton>
+            </MudStack>
+        </EditForm>
+        @if (_categories.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Brak kategorii. Dodaj kategorię, aby przypisywać ją do kosztów.</MudText>
+        }
+        else
+        {
+            <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap">
+                @foreach (var c in _categories)
+                {
+                    <MudChip T="object" Class="ma-1" OnClose="@(async () => await DeleteCategory(c.Id))" CloseIcon="@Icons.Material.Filled.Close">@c.Name</MudChip>
+                }
+            </MudStack>
+        }
+    </MudPaper>
+
+    <MudPaper Class="app-card pa-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3">Stałe koszty</MudText>
+            <EditForm Model="_newExpense" FormName="addDictExpenseForm" OnValidSubmit="AddExpense">
+                <MudStack Row="true" Spacing="2" Class="mb-3 trip-form-row">
+                    <MudTextField @bind-Value="_newExpense.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
+                    <div class="trip-category-select trip-form-field">
+                        <label class="mud-input-label mud-input-label-outlined">Kategoria</label>
+                        <select value="@(_newExpense.CategoryId?.ToString() ?? "")" @onchange="OnExpenseCategoryChange">
+                            <option value="">—</option>
+                            @foreach (var c in _categories)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <MudNumericField @bind-Value="_newExpense.DefaultAmount" Label="Domyślna kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">Dodaj</MudButton>
+                </MudStack>
+            </EditForm>
+            @if (_expenses.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Brak pozycji. Dodaj stały koszt.</MudText>
+            }
+            else
+            {
+                <MudTable Items="@_expenses" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>Opis</MudTh>
+                        <MudTh>Kategoria</MudTh>
+                        <MudTh Style="text-align: right;">Domyślna kwota</MudTh>
+                        <MudTh Style="width: 56px;"></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Opis">@context.Description</MudTd>
+                        <MudTd DataLabel="Kategoria">@(context.Category?.Name ?? "—")</MudTd>
+                        <MudTd DataLabel="Kwota" Style="text-align: right;">@context.DefaultAmount.ToString("N2") zł</MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" @onclick="@(() => DeleteItem(context.Id))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+    </MudPaper>
+    <MudPaper Class="app-card pa-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3">Stałe przychody</MudText>
+            <EditForm Model="_newIncome" FormName="addDictIncomeForm" OnValidSubmit="AddIncome">
+                <MudStack Row="true" Spacing="2" Class="mb-3 trip-form-row">
+                    <MudTextField @bind-Value="_newIncome.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
+                    <MudNumericField @bind-Value="_newIncome.DefaultAmount" Label="Domyślna kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" Size="Size.Small">Dodaj</MudButton>
+                </MudStack>
+            </EditForm>
+            @if (_incomes.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Brak pozycji. Dodaj stały przychód.</MudText>
+            }
+            else
+            {
+                <MudTable Items="@_incomes" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>Opis</MudTh>
+                        <MudTh Style="text-align: right;">Domyślna kwota</MudTh>
+                        <MudTh Style="width: 56px;"></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Opis">@context.Description</MudTd>
+                        <MudTd DataLabel="Kwota" Style="text-align: right;">@context.DefaultAmount.ToString("N2") zł</MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" @onclick="@(() => DeleteItem(context.Id))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+    </MudPaper>
+</MudStack>
+
+@code {
+    private List<DictionaryItem> _expenses = new();
+    private List<DictionaryItem> _incomes = new();
+    private List<ExpenseCategory> _categories = new();
+    private DictionaryItem _newExpense = new() { Type = DictionaryItemType.Expense };
+    private DictionaryItem _newIncome = new() { Type = DictionaryItemType.Income };
+    private ExpenseCategory _newCategory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var all = await DictionaryService.GetAllAsync();
+        _expenses = all.Where(d => d.Type == DictionaryItemType.Expense).ToList();
+        _incomes = all.Where(d => d.Type == DictionaryItemType.Income).ToList();
+        _categories = (await CategoryService.GetAllAsync()).ToList();
+        _newExpense = new DictionaryItem { Type = DictionaryItemType.Expense };
+        _newIncome = new DictionaryItem { Type = DictionaryItemType.Income };
+        _newCategory = new ExpenseCategory();
+        StateHasChanged();
+    }
+
+    private async Task AddCategory()
+    {
+        if (string.IsNullOrWhiteSpace(_newCategory.Name)) return;
+        await CategoryService.CreateAsync(_newCategory);
+        Snackbar.Add("Kategoria dodana.", Severity.Success);
+        await LoadData();
+    }
+
+    private async Task DeleteCategory(int id)
+    {
+        await CategoryService.DeleteAsync(id);
+        Snackbar.Add("Kategoria usunięta.", Severity.Info);
+        await LoadData();
+    }
+
+    private async Task AddExpense()
+    {
+        if (string.IsNullOrWhiteSpace(_newExpense.Description)) return;
+        await DictionaryService.CreateAsync(_newExpense);
+        Snackbar.Add("Pozycja kosztu dodana do słownika.", Severity.Success);
+        await LoadData();
+    }
+
+    private async Task AddIncome()
+    {
+        if (string.IsNullOrWhiteSpace(_newIncome.Description)) return;
+        await DictionaryService.CreateAsync(_newIncome);
+        Snackbar.Add("Pozycja przychodu dodana do słownika.", Severity.Success);
+        await LoadData();
+    }
+
+    private async Task DeleteItem(int id)
+    {
+        await DictionaryService.DeleteAsync(id);
+        Snackbar.Add("Pozycja usunięta ze słownika.", Severity.Info);
+        await LoadData();
+    }
+
+    private void OnExpenseCategoryChange(ChangeEventArgs e)
+    {
+        var s = e.Value?.ToString();
+        _newExpense.CategoryId = string.IsNullOrEmpty(s) ? null : int.TryParse(s, out var id) ? id : null;
+    }
+}

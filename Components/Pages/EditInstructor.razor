@@ -1,0 +1,64 @@
+@page "/rozliczenia-instruktorow/edytuj/{Id:int}"
+@rendermode InteractiveServer
+@inject IInstructorService InstructorService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Edytuj instruktora - SkiSettlement</PageTitle>
+
+@if (_instructor is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    @if (_notFound)
+    {
+        <MudAlert Severity="Severity.Warning">Nie znaleziono instruktora.</MudAlert>
+        <MudButton Href="/rozliczenia-instruktorow" Variant="Variant.Text" Class="mt-2">← Powrót</MudButton>
+    }
+}
+else
+{
+    <div class="page-hero">
+        <h1>Edytuj instruktora</h1>
+        <p>@_instructor.FirstName @_instructor.LastName</p>
+    </div>
+
+    <MudPaper Class="app-card pa-4" Elevation="2">
+        <EditForm Model="_instructor" FormName="editInstructorForm" OnValidSubmit="Save">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_instructor.FirstName" Label="Imię" Variant="Variant.Outlined" Required="true" RequiredError="Podaj imię" />
+                <MudTextField @bind-Value="_instructor.LastName" Label="Nazwisko" Variant="Variant.Outlined" Required="true" RequiredError="Podaj nazwisko" />
+                <MudNumericField @bind-Value="_instructor.BaseSalary" Label="Pensja podstawowa (zł)" Variant="Variant.Outlined" Min="0" Step="0.01m" />
+                <MudNumericField @bind-Value="_instructor.HourlyRate" Label="Stawka za godzinę (zł)" Variant="Variant.Outlined" Min="0" Step="0.01m" />
+                <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                    <MudButton Variant="Variant.Text" Href="/rozliczenia-instruktorow">Anuluj</MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Zapisz</MudButton>
+                </MudStack>
+            </MudStack>
+        </EditForm>
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Instructor? _instructor;
+    private bool _notFound;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _instructor = await InstructorService.GetByIdAsync(Id);
+        if (_instructor is null)
+            _notFound = true;
+    }
+
+    private async Task Save()
+    {
+        if (_instructor is null) return;
+        if (string.IsNullOrWhiteSpace(_instructor.FirstName) || string.IsNullOrWhiteSpace(_instructor.LastName))
+            return;
+        await InstructorService.UpdateAsync(_instructor);
+        Snackbar.Add("Zapisano.", Severity.Success);
+        Navigation.NavigateTo("/rozliczenia-instruktorow");
+    }
+}

@@ -1,0 +1,82 @@
+@page "/dodaj-wyjazd"
+@rendermode InteractiveServer
+@inject ITripService TripService
+@inject IExpenseService ExpenseService
+@inject IIncomeService IncomeService
+@inject IDictionaryService DictionaryService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Dodaj wyjazd - SkiSettlement</PageTitle>
+
+<div class="page-hero">
+    <h1>Dodaj wyjazd</h1>
+    <p>Wprowadź dane nowego wyjazdu narciarskiego.</p>
+</div>
+
+<MudPaper Class="app-card pa-4" Elevation="2">
+    <EditForm Model="_model" FormName="addTripForm" OnValidSubmit="Submit">
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_model.Name" Label="Nazwa wyjazdu" Required="true" RequiredError="Podaj nazwę" />
+            <MudTextField @bind-Value="_model.Destination" Label="Cel / region" />
+            <MudTextField @bind-Value="_dateFromText" Label="Data od" InputType="InputType.Date" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_dateToText" Label="Data do" InputType="InputType.Date" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_model.Description" Label="Opis" Lines="3" Variant="Variant.Outlined" />
+            <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                <MudButton Variant="Variant.Text" Href="/">Anuluj</MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_saving">
+                    Zapisz
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </EditForm>
+</MudPaper>
+
+@code {
+    private Trip _model = new();
+    private string _dateFromText = DateTime.Today.ToString("yyyy-MM-dd");
+    private string _dateToText = DateTime.Today.ToString("yyyy-MM-dd");
+    private bool _saving;
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Name))
+            return;
+
+        if (DateTime.TryParse(_dateFromText, out var dateFrom))
+            _model.DateFrom = dateFrom;
+        else
+            _model.DateFrom = DateTime.Today;
+
+        if (DateTime.TryParse(_dateToText, out var dateTo))
+            _model.DateTo = dateTo;
+        else
+            _model.DateTo = _model.DateFrom;
+
+        if (_model.DateTo < _model.DateFrom)
+            _model.DateTo = _model.DateFrom;
+
+        _saving = true;
+        try
+        {
+            var trip = await TripService.CreateAsync(_model);
+            var dictItems = await DictionaryService.GetAllAsync();
+            foreach (var item in dictItems)
+            {
+                if (item.Type == DictionaryItemType.Expense)
+                    await ExpenseService.CreateAsync(new Expense { TripId = trip.Id, Description = item.Description, Amount = item.DefaultAmount, CategoryId = item.CategoryId });
+                else
+                    await IncomeService.CreateAsync(new Income { TripId = trip.Id, Description = item.Description, Amount = item.DefaultAmount });
+            }
+            if (dictItems.Count > 0)
+                Snackbar.Add($"Wyjazd dodany. Dodano {dictItems.Count} pozycji ze słownika.", Severity.Success);
+            else
+                Snackbar.Add("Wyjazd został dodany.", Severity.Success);
+            Navigation.NavigateTo("/", forceLoad: false);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

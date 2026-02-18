@@ -1,0 +1,158 @@
+@page "/rozliczenia-instruktorow/{Id:int}"
+@rendermode InteractiveServer
+@inject IInstructorService InstructorService
+@inject IInstructorWeekService InstructorWeekService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<PageTitle>@(_instructor != null ? $"{_instructor.FirstName} {_instructor.LastName} - Rozliczenie" : "Rozliczenie") - SkiSettlement</PageTitle>
+
+@if (_instructor is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    @if (_notFound)
+    {
+        <MudAlert Severity="Severity.Warning">Nie znaleziono instruktora.</MudAlert>
+        <MudButton Href="/rozliczenia-instruktorow" Variant="Variant.Text" Class="mt-2">← Powrót do listy</MudButton>
+    }
+}
+else
+{
+    <MudStack Spacing="4">
+        <MudButton Href="/rozliczenia-instruktorow" StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text">Rozliczenia instruktorów</MudButton>
+
+        <MudPaper Class="app-card pa-4" Elevation="2">
+            <MudStack AlignItems="AlignItems.Center" Class="trip-header-center">
+                <MudText Typo="Typo.h5" Class="trip-header-line">@_instructor.FirstName @_instructor.LastName</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="trip-header-line">Pensja: @_instructor.BaseSalary.ToString("N2") zł + @_instructor.TotalHours.ToString("N1") h × @_instructor.HourlyRate.ToString("N2") zł/h</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="trip-header-line mt-1">Suma godzin: @_instructor.TotalHours.ToString("N1") · Kwota za godziny: @((_instructor.TotalHours * _instructor.HourlyRate).ToString("N2")) zł · Pensja podstawowa: @_instructor.BaseSalary.ToString("N2") zł</MudText>
+                <MudText Typo="Typo.h6" Class="mt-2">Razem: <MudText Color="Color.Success">@_instructor.TotalAmount.ToString("N2") zł</MudText></MudText>
+                <MudButton Href="@($"/api/instructors/{Id}/export")" Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Target="_blank" Class="mt-2">Eksportuj do Excel</MudButton>
+            </MudStack>
+        </MudPaper>
+
+        <MudPaper Class="app-card pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-3">Tygodnie pracy</MudText>
+            <EditForm Model="_newWeek" FormName="addWeekForm" OnValidSubmit="AddWeek">
+                <MudStack Row="true" Spacing="2" Class="mb-3 trip-form-row">
+                    <MudNumericField @bind-Value="_newWeek.WeekNumber" Label="Numer tygodnia" Variant="Variant.Outlined" Min="1" Max="52" Class="trip-form-field" />
+                    <MudNumericField @bind-Value="_newWeek.HoursWorked" Label="Godziny" Variant="Variant.Outlined" Min="0" Step="0.5m" Class="trip-form-field" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">Dodaj tydzień</MudButton>
+                </MudStack>
+            </EditForm>
+            @if (_weeks.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Brak tygodni. Dodaj tygodnie pracy powyżej.</MudText>
+            }
+            else
+            {
+                @if (_editingWeekId.HasValue)
+                {
+                    <MudPaper Class="pa-3 mb-3" Elevation="1" Style="background: var(--mud-palette-background-grey);">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Edytuj tydzień</MudText>
+                        <MudStack Row="true" Spacing="2">
+                            <MudNumericField @bind-Value="_editWeek.WeekNumber" Label="Numer tygodnia" Variant="Variant.Outlined" Min="1" Max="52" Style="width: 140px;" />
+                            <MudNumericField @bind-Value="_editWeek.HoursWorked" Label="Godziny" Variant="Variant.Outlined" Min="0" Step="0.5m" Style="width: 120px;" />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveEditWeek">Zapisz</MudButton>
+                            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditWeek">Anuluj</MudButton>
+                        </MudStack>
+                    </MudPaper>
+                }
+                <MudTable Items="@_weeks" Hover="true" Striped="true" Dense="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Tydzień</MudTh>
+                        <MudTh Style="text-align: right;">Godziny</MudTh>
+                        <MudTh Style="text-align: right;">Kwota (godz. × stawka)</MudTh>
+                        <MudTh Style="width: 100px;"></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        @{ var w = context; }
+                        <MudTd DataLabel="Tydzień">Tydzień @context.WeekNumber</MudTd>
+                        <MudTd DataLabel="Godziny" Style="text-align: right;">@context.HoursWorked.ToString("N1")</MudTd>
+                        <MudTd DataLabel="Kwota" Style="text-align: right;">@((context.HoursWorked * _instructor.HourlyRate).ToString("N2")) zł</MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => StartEditWeek(w))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteWeek(w))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudPaper>
+    </MudStack>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Instructor? _instructor;
+    private bool _notFound;
+    private List<InstructorWeek> _weeks = new();
+    private InstructorWeek _newWeek = new();
+    private int? _editingWeekId;
+    private InstructorWeek _editWeek = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _instructor = await InstructorService.GetByIdAsync(Id);
+        if (_instructor is null)
+        {
+            _notFound = true;
+            _weeks = new List<InstructorWeek>();
+            return;
+        }
+        await LoadWeeks();
+    }
+
+    private async Task LoadWeeks()
+    {
+        _weeks = (await InstructorWeekService.GetByInstructorIdAsync(Id)).ToList();
+        if (_instructor != null)
+            _instructor = await InstructorService.GetByIdAsync(Id);
+        if (_weeks.Count > 0 && _newWeek.WeekNumber <= 0)
+            _newWeek.WeekNumber = _weeks.Max(w => w.WeekNumber) + 1;
+        else if (_weeks.Count == 0)
+            _newWeek.WeekNumber = 1;
+        StateHasChanged();
+    }
+
+    private async Task AddWeek()
+    {
+        _newWeek.InstructorId = Id;
+        await InstructorWeekService.CreateAsync(_newWeek);
+        Snackbar.Add("Tydzień dodany.", Severity.Success);
+        await LoadWeeks();
+        _newWeek = new InstructorWeek { WeekNumber = _weeks.Any() ? _weeks.Max(w => w.WeekNumber) + 1 : 1 };
+    }
+
+    private void StartEditWeek(InstructorWeek week)
+    {
+        _editingWeekId = week.Id;
+        _editWeek = new InstructorWeek { Id = week.Id, InstructorId = week.InstructorId, WeekNumber = week.WeekNumber, HoursWorked = week.HoursWorked };
+    }
+
+    private void CancelEditWeek()
+    {
+        _editingWeekId = null;
+    }
+
+    private async Task SaveEditWeek()
+    {
+        await InstructorWeekService.UpdateAsync(_editWeek);
+        Snackbar.Add("Zapisano.", Severity.Success);
+        _editingWeekId = null;
+        await LoadWeeks();
+    }
+
+    private async Task DeleteWeek(InstructorWeek week)
+    {
+        var ok = await JSRuntime.InvokeAsync<bool>("confirmAsync", $"Usunąć tydzień {week.WeekNumber}?");
+        if (ok)
+        {
+            await InstructorWeekService.DeleteAsync(week.Id);
+            Snackbar.Add("Tydzień usunięty.", Severity.Info);
+            await LoadWeeks();
+        }
+    }
+}

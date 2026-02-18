@@ -1,0 +1,82 @@
+@page "/wyjazdy/{Id:int}/edytuj"
+@rendermode InteractiveServer
+@inject ITripService TripService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Edytuj wyjazd - SkiSettlement</PageTitle>
+
+@if (_trip is null && !_notFound)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+else if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning">Nie znaleziono wyjazdu.</MudAlert>
+    <MudButton Href="/" Class="mt-2">Powrót</MudButton>
+}
+else
+{
+    <MudStack Spacing="4">
+        <MudButton Href="@($"/wyjazdy/{Id}")" StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text">Szczegóły wyjazdu</MudButton>
+        <MudText Typo="Typo.h5">Edytuj wyjazd</MudText>
+        <MudPaper Class="pa-4" Elevation="2" Style="max-width: 500px;">
+            <EditForm Model="_trip!" FormName="editTripForm" OnValidSubmit="Save">
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_trip!.Name" Label="Nazwa wyjazdu" Required="true" RequiredError="Podaj nazwę" />
+                    <MudTextField @bind-Value="_trip.Destination" Label="Cel / region" />
+                    <MudTextField @bind-Value="_dateFromText" Label="Data od" InputType="InputType.Date" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="_dateToText" Label="Data do" InputType="InputType.Date" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="_trip.Description" Label="Opis" Lines="3" Variant="Variant.Outlined" />
+                    <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                        <MudButton Href="@($"/wyjazdy/{Id}")" Variant="Variant.Text">Anuluj</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_saving">Zapisz</MudButton>
+                    </MudStack>
+                </MudStack>
+            </EditForm>
+        </MudPaper>
+    </MudStack>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Trip? _trip;
+    private string _dateFromText = "";
+    private string _dateToText = "";
+    private bool _notFound;
+    private bool _saving;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _trip = await TripService.GetByIdAsync(Id);
+        if (_trip is null)
+        {
+            _notFound = true;
+            return;
+        }
+        _dateFromText = _trip.DateFrom.ToString("yyyy-MM-dd");
+        _dateToText = _trip.DateTo.ToString("yyyy-MM-dd");
+    }
+
+    private async Task Save()
+    {
+        if (_trip is null || string.IsNullOrWhiteSpace(_trip.Name)) return;
+        if (DateTime.TryParse(_dateFromText, out var df)) _trip.DateFrom = df;
+        if (DateTime.TryParse(_dateToText, out var dt)) _trip.DateTo = dt;
+        if (_trip.DateTo < _trip.DateFrom) _trip.DateTo = _trip.DateFrom;
+
+        _saving = true;
+        try
+        {
+            await TripService.UpdateAsync(_trip);
+            Snackbar.Add("Wyjazd zapisany.", Severity.Success);
+            Navigation.NavigateTo($"/wyjazdy/{Id}", forceLoad: false);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

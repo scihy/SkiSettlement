@@ -1,0 +1,28 @@
+﻿<Project>
+  <ItemGroup>
+    <StaticWebAssetEndpoint Include="_content/SkiSettlement/app.7rer04rt3u.css">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\app.css'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"7rer04rt3u"},{"Name":"integrity","Value":"sha256-jfxy1Dhmchrzz04iV7dXo6tHuxQ75fGfJoxWQ\u002B7qnhM="},{"Name":"label","Value":"_content/SkiSettlement/app.css"}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"7961"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022jfxy1Dhmchrzz04iV7dXo6tHuxQ75fGfJoxWQ\u002B7qnhM=\u0022"},{"Name":"Last-Modified","Value":"Wed, 18 Feb 2026 10:01:15 GMT"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+    <StaticWebAssetEndpoint Include="_content/SkiSettlement/app.css">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\app.css'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-jfxy1Dhmchrzz04iV7dXo6tHuxQ75fGfJoxWQ\u002B7qnhM="}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"7961"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022jfxy1Dhmchrzz04iV7dXo6tHuxQ75fGfJoxWQ\u002B7qnhM=\u0022"},{"Name":"Last-Modified","Value":"Wed, 18 Feb 2026 10:01:15 GMT"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+    <StaticWebAssetEndpoint Include="_content/SkiSettlement/SkiSettlement.bundle.scp.css">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\SkiSettlement.s94o5c0tq8.bundle.scp.css'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-oED4rsrXBYEB7dX95bNYn/TxdX2uzJHzyFDFScQyS\u002Bo="}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"3932"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022oED4rsrXBYEB7dX95bNYn/TxdX2uzJHzyFDFScQyS\u002Bo=\u0022"},{"Name":"Last-Modified","Value":"Tue, 17 Feb 2026 17:34:28 GMT"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+    <StaticWebAssetEndpoint Include="_content/SkiSettlement/SkiSettlement.s94o5c0tq8.bundle.scp.css">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\SkiSettlement.s94o5c0tq8.bundle.scp.css'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"s94o5c0tq8"},{"Name":"integrity","Value":"sha256-oED4rsrXBYEB7dX95bNYn/TxdX2uzJHzyFDFScQyS\u002Bo="},{"Name":"label","Value":"_content/SkiSettlement/SkiSettlement.bundle.scp.css"}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Accept-Ranges","Value":"bytes"},{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"3932"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022oED4rsrXBYEB7dX95bNYn/TxdX2uzJHzyFDFScQyS\u002Bo=\u0022"},{"Name":"Last-Modified","Value":"Tue, 17 Feb 2026 17:34:28 GMT"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+  </ItemGroup>
+</Project>

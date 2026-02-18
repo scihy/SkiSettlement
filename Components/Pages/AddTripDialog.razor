@@ -1,0 +1,51 @@
+@rendermode InteractiveServer
+@inject ITripService TripService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Dodaj wyjazd</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="Submit">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.Name" Label="Nazwa wyjazdu" Required="true" RequiredError="Podaj nazwę" />
+                <MudTextField @bind-Value="_model.Destination" Label="Cel / region" />
+                <MudDatePicker @bind-Date="_dateFrom" Label="Data od" />
+                <MudDatePicker @bind-Date="_dateTo" Label="Data do" />
+                <MudTextField @bind-Value="_model.Description" Label="Opis" Lines="3" Variant="Variant.Outlined" />
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Anuluj</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Zapisz</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private Trip _model = new();
+    private DateTime? _dateFrom = DateTime.Today;
+    private DateTime? _dateTo = DateTime.Today;
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Name))
+            return;
+
+        _model.DateFrom = _dateFrom ?? DateTime.Today;
+        _model.DateTo = _dateTo ?? DateTime.Today;
+        if (_model.DateTo < _model.DateFrom)
+            _model.DateTo = _model.DateFrom;
+
+        await TripService.CreateAsync(_model);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

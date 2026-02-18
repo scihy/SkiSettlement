@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="SkiSettlement.styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <HeadOutlet />
+</head>
+
+<body>
+    <script>
+        (function() {
+            var theme = document.cookie.match(/theme=([^;]+)/);
+            theme = theme ? theme[1] : 'dark';
+            document.body.classList.add(theme === 'light' ? 'app-light' : 'app-dark');
+        })();
+    </script>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+        window.confirmAsync = function(msg) { return Promise.resolve(window.confirm(msg)); }
+        window.toggleTheme = function() {
+            var current = document.cookie.match(/theme=([^;]+)/);
+            current = current ? current[1] : 'dark';
+            var next = current === 'dark' ? 'light' : 'dark';
+            document.cookie = 'theme=' + next + ';path=/;max-age=31536000;samesite=lax';
+            location.reload();
+        };
+    </script>
+</body>
+
+</html>
