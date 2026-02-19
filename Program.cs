@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
+using System.IO;
 using SkiSettlement.Components;
 using SkiSettlement.Data;
 using SkiSettlement.Data.Models;
@@ -39,6 +41,14 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromDays(14);
     options.SlidingExpiration = true;
 });
+
+var keysDirectory = Path.Combine(builder.Environment.ContentRootPath, "data-keys");
+if (!Directory.Exists(keysDirectory))
+{
+    Directory.CreateDirectory(keysDirectory);
+}
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
 
 // Serwisy biznesowe
 builder.Services.AddScoped<ITripService, TripService>();

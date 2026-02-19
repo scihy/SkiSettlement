@@ -20,6 +20,9 @@
 *.sqlite
 *.sqlite3
 
+## Data Protection keys (sensitive)
+data-keys/
+
 ## User-specific settings & secrets
 appsettings.Development.json
 appsettings.Local.json
