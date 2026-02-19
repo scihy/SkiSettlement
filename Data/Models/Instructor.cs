@@ -17,5 +17,11 @@ public class Instructor
     public decimal TotalHours => Weeks.Sum(w => w.HoursWorked);
 
     [NotMapped]
-    public decimal TotalAmount => BaseSalary + TotalHours * HourlyRate;
+    public decimal AmountFromHours => TotalHours * HourlyRate;
+
+    [NotMapped]
+    public decimal TotalSupplementAmount => Weeks.Sum(w => w.SupplementAmount);
+
+    [NotMapped]
+    public decimal TotalAmount => BaseSalary + AmountFromHours + TotalSupplementAmount;
 }

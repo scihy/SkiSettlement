@@ -1,0 +1,64 @@
+@page "/logi"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+@inject IAuditLogService AuditLogService
+
+<PageTitle>Logi - SkiSettlement</PageTitle>
+
+<div class="page-hero">
+    <h1>Logi</h1>
+    <p>Historia zmian: kto co dodał, zmienił lub usunął.</p>
+</div>
+
+<MudPaper Class="app-card pa-4" Elevation="2">
+    @if (_logs is null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else if (_logs.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">Brak wpisów w logu.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_logs" Hover="true" Striped="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+            <HeaderContent>
+                <MudTh>Data i godzina</MudTh>
+                <MudTh>Kto (IP)</MudTh>
+                <MudTh>Akcja</MudTh>
+                <MudTh>Typ</MudTh>
+                <MudTh>Opis</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Data">@context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudTd>
+                <MudTd DataLabel="Kto">@context.UserName</MudTd>
+                <MudTd DataLabel="Akcja">
+                    @if (context.Action == "Dodano")
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">@context.Action</MudChip>
+                    }
+                    else if (context.Action == "Zmieniono")
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.Action</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error">@context.Action</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Typ">@context.EntityType</MudTd>
+                <MudTd DataLabel="Opis">@context.Description</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    private IReadOnlyList<Data.Models.AuditLog>? _logs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _logs = await AuditLogService.GetRecentAsync(500);
+    }
+}

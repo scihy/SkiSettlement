@@ -1,5 +1,7 @@
 @page "/wyjazdy/{Id:int}"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
 @inject ITripService TripService
 @inject IExpenseService ExpenseService
 @inject IIncomeService IncomeService
@@ -88,6 +90,10 @@ else
                                         </select>
                                     </div>
                                     <MudNumericField @bind-Value="_editExpense.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+                                    <MudSelect T="bool" @bind-Value="_editExpense.IsPaid" Label="Płatność" Variant="Variant.Outlined" Dense="true" Class="trip-form-field" Style="min-width: 90px;">
+                                        <MudSelectItem T="bool" Value="true"><MudText Style="font-weight: 600;" Color="Color.Success">Tak</MudText></MudSelectItem>
+                                        <MudSelectItem T="bool" Value="false"><MudText Style="font-weight: 600;" Color="Color.Error">Nie</MudText></MudSelectItem>
+                                    </MudSelect>
                                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveEditExpense">Zapisz</MudButton>
                                     <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditExpense">Anuluj</MudButton>
                                 </MudStack>
@@ -102,12 +108,21 @@ else
                                         <HeaderContent>
                                             <MudTh>Opis</MudTh>
                                             <MudTh Style="text-align: right;">Kwota</MudTh>
+                                            <MudTh Style="width: 100px; min-width: 100px;">Płatność</MudTh>
                                             <MudTh Style="width: 100px;"></MudTh>
                                         </HeaderContent>
                                         <RowTemplate>
-                                            @{ var expId = context.Id; }
+                                            @{ var expId = context.Id; var exp = context; }
                                             <MudTd DataLabel="Opis">@context.Description</MudTd>
                                             <MudTd DataLabel="Kwota" Style="text-align: right;">@context.Amount.ToString("N2") zł</MudTd>
+                                            <MudTd DataLabel="Płatność" Style="width: 100px; min-width: 100px;">
+                                                <div class="payment-select @(context.IsPaid ? "payment-yes" : "payment-no")">
+                                                    <MudSelect T="bool" Value="exp.IsPaid" ValueChanged="@(async (bool v) => await OnExpensePaidChanged(exp, v))" ToStringFunc="@(b => b ? "Tak" : "Nie")" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense" Style="min-width: 88px; width: 88px;">
+                                                        <MudSelectItem T="bool" Value="true"><MudText Style="font-weight: 600;" Color="Color.Success">Tak</MudText></MudSelectItem>
+                                                        <MudSelectItem T="bool" Value="false"><MudText Style="font-weight: 600;" Color="Color.Error">Nie</MudText></MudSelectItem>
+                                                    </MudSelect>
+                                                </div>
+                                            </MudTd>
                                             <MudTd>
                                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => StartEditExpense(expId))" />
                                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteExpense(expId))" />
@@ -145,6 +160,10 @@ else
                                 <MudStack Row="true" Spacing="2" Class="trip-form-row">
                                     <MudTextField @bind-Value="_editIncome.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
                                     <MudNumericField @bind-Value="_editIncome.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
+                                    <MudSelect T="bool" @bind-Value="_editIncome.IsPaid" Label="Płatność" Variant="Variant.Outlined" Dense="true" Class="trip-form-field" Style="min-width: 90px;">
+                                        <MudSelectItem T="bool" Value="true"><MudText Style="font-weight: 600;" Color="Color.Success">Tak</MudText></MudSelectItem>
+                                        <MudSelectItem T="bool" Value="false"><MudText Style="font-weight: 600;" Color="Color.Error">Nie</MudText></MudSelectItem>
+                                    </MudSelect>
                                     <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="SaveEditIncome">Zapisz</MudButton>
                                     <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditIncome">Anuluj</MudButton>
                                 </MudStack>
@@ -154,14 +173,21 @@ else
                             <HeaderContent>
                                 <MudTh>Opis</MudTh>
                                 <MudTh Style="text-align: right;">Kwota</MudTh>
+                                <MudTh Style="width: 100px; min-width: 100px;">Płatność</MudTh>
                                 <MudTh Style="width: 100px;"></MudTh>
                             </HeaderContent>
                             <RowTemplate>
-                                @{
-                                    var incId = context.Id;
-                                }
+                                @{ var incId = context.Id; var inc = context; }
                                 <MudTd DataLabel="Opis">@context.Description</MudTd>
                                 <MudTd DataLabel="Kwota" Style="text-align: right;">@context.Amount.ToString("N2") zł</MudTd>
+                                <MudTd DataLabel="Płatność" Style="width: 100px; min-width: 100px;">
+                                    <div class="payment-select @(context.IsPaid ? "payment-yes" : "payment-no")">
+                                        <MudSelect T="bool" Value="inc.IsPaid" ValueChanged="@(async (bool v) => await OnIncomePaidChanged(inc, v))" ToStringFunc="@(b => b ? "Tak" : "Nie")" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense" Style="min-width: 88px; width: 88px;">
+                                            <MudSelectItem T="bool" Value="true"><MudText Style="font-weight: 600;" Color="Color.Success">Tak</MudText></MudSelectItem>
+                                            <MudSelectItem T="bool" Value="false"><MudText Style="font-weight: 600;" Color="Color.Error">Nie</MudText></MudSelectItem>
+                                        </MudSelect>
+                                    </div>
+                                </MudTd>
                                 <MudTd>
                                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => StartEditIncome(incId))" />
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteIncome(incId))" />
@@ -199,6 +225,16 @@ else
     }
     .trip-details-tables ::deep .mud-table-striped .mud-table-container .mud-table-root .mud-table-body .mud-table-row:nth-of-type(odd) {
         background-color: rgba(0, 0, 0, 0.1) !important;
+    }
+    .payment-select.payment-yes ::deep .mud-input-slot,
+    .payment-select.payment-yes ::deep .mud-input-slot input {
+        color: var(--mud-palette-success) !important;
+        font-weight: 600 !important;
+    }
+    .payment-select.payment-no ::deep .mud-input-slot,
+    .payment-select.payment-no ::deep .mud-input-slot input {
+        color: var(--mud-palette-error) !important;
+        font-weight: 600 !important;
     }
 </style>
 
@@ -288,7 +324,7 @@ else
         var exp = _expenses.FirstOrDefault(e => e.Id == expenseId);
         if (exp is null) return;
         _editingExpenseId = expenseId;
-        _editExpense = new Expense { Id = exp.Id, TripId = exp.TripId, Description = exp.Description, Amount = exp.Amount, CategoryId = exp.CategoryId };
+        _editExpense = new Expense { Id = exp.Id, TripId = exp.TripId, Description = exp.Description, Amount = exp.Amount, CategoryId = exp.CategoryId, IsPaid = exp.IsPaid };
     }
 
     private void CancelEditExpense()
@@ -310,7 +346,7 @@ else
         var inc = _incomes.FirstOrDefault(i => i.Id == incomeId);
         if (inc is null) return;
         _editingIncomeId = incomeId;
-        _editIncome = new Income { Id = inc.Id, TripId = inc.TripId, Description = inc.Description, Amount = inc.Amount };
+        _editIncome = new Income { Id = inc.Id, TripId = inc.TripId, Description = inc.Description, Amount = inc.Amount, IsPaid = inc.IsPaid };
     }
 
     private void CancelEditIncome()
@@ -324,6 +360,20 @@ else
         await IncomeService.UpdateAsync(_editIncome);
         Snackbar.Add("Przychód zapisany.", Severity.Success);
         _editingIncomeId = null;
+        await LoadData();
+    }
+
+    private async Task OnExpensePaidChanged(Expense expense, bool value)
+    {
+        expense.IsPaid = value;
+        await ExpenseService.UpdateAsync(expense);
+        await LoadData();
+    }
+
+    private async Task OnIncomePaidChanged(Income income, bool value)
+    {
+        income.IsPaid = value;
+        await IncomeService.UpdateAsync(income);
         await LoadData();
     }
 

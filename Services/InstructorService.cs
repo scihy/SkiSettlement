@@ -7,8 +7,13 @@ namespace SkiSettlement.Services;
 public class InstructorService : IInstructorService
 {
     private readonly AppDbContext _context;
+    private readonly IAuditLogService _auditLog;
 
-    public InstructorService(AppDbContext context) => _context = context;
+    public InstructorService(AppDbContext context, IAuditLogService auditLog)
+    {
+        _context = context;
+        _auditLog = auditLog;
+    }
 
     public async Task<IReadOnlyList<Instructor>> GetAllAsync(CancellationToken cancellationToken = default)
         => await _context.Instructors.Include(i => i.Weeks).OrderBy(i => i.LastName).ThenBy(i => i.FirstName).ToListAsync(cancellationToken);
@@ -21,6 +26,7 @@ public class InstructorService : IInstructorService
         instructor.CreatedAt = DateTime.UtcNow;
         _context.Instructors.Add(instructor);
         await _context.SaveChangesAsync(cancellationToken);
+        await _auditLog.LogAsync("Dodano", "Instruktor", instructor.Id, $"{instructor.FirstName} {instructor.LastName}", cancellationToken);
         return instructor;
     }
 
@@ -33,6 +39,7 @@ public class InstructorService : IInstructorService
         existing.BaseSalary = instructor.BaseSalary;
         existing.HourlyRate = instructor.HourlyRate;
         await _context.SaveChangesAsync(cancellationToken);
+        await _auditLog.LogAsync("Zmieniono", "Instruktor", instructor.Id, $"{instructor.FirstName} {instructor.LastName}", cancellationToken);
         return true;
     }
 
@@ -40,8 +47,10 @@ public class InstructorService : IInstructorService
     {
         var instructor = await _context.Instructors.FindAsync([id], cancellationToken);
         if (instructor is null) return false;
+        var desc = $"{instructor.FirstName} {instructor.LastName}";
         _context.Instructors.Remove(instructor);
         await _context.SaveChangesAsync(cancellationToken);
+        await _auditLog.LogAsync("Usunięto", "Instruktor", id, desc, cancellationToken);
         return true;
     }
 }

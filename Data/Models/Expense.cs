@@ -7,6 +7,8 @@ public class Expense
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public int? CategoryId { get; set; }
+    /// <summary>Czy koszt został opłacony (Płatność: Tak/Nie).</summary>
+    public bool IsPaid { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Trip Trip { get; set; } = null!;

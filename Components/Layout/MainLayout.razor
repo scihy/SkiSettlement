@@ -1,15 +1,27 @@
 @inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IHttpContextAccessor HttpContextAccessor
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
-<MudPopoverProvider />
-<MudDialogProvider />
+<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+<MudDialogProvider @rendermode="InteractiveServer" />
 
 <MudLayout Class="@(_isDarkMode ? "app-dark" : "app-light")">
     <MudAppBar Elevation="0" Class="ski-appbar apple-appbar" Dense="true">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" Href="#" />
         <MudText Typo="Typo.h6" Class="ml-3 apple-heading">SkiSettlement</MudText>
         <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-2">@_displayName</MudText>
+                <MudButton Href="/Account/Logout" Variant="Variant.Text" Color="Color.Inherit" Size="Size.Small">Wyloguj</MudButton>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Href="/Account/Login" Variant="Variant.Text" Color="Color.Inherit" Size="Size.Small">Zaloguj</MudButton>
+                <MudButton Href="/rejestracja" Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small">Rejestracja</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
         <a href="javascript:void(0)" class="theme-toggle-link" onclick="window.toggleTheme(); return false;" title="@(_isDarkMode ? "Jasny motyw" : "Ciemny motyw")" aria-label="@(_isDarkMode ? "Jasny motyw" : "Ciemny motyw")">
             @if (_isDarkMode)
             {
@@ -21,14 +33,19 @@
             }
         </a>
     </MudAppBar>
-    <MudDrawer Open="true" ClipMode="DrawerClipMode.Always" Elevation="0" Class="ski-drawer apple-drawer">
-        <MudNavMenu Class="ski-nav-menu">
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Wyjazdy</MudNavLink>
-            <MudNavLink Href="/dodaj-wyjazd" Icon="@Icons.Material.Filled.Add">Dodaj wyjazd</MudNavLink>
-            <MudNavLink Href="/slownik" Icon="@Icons.Material.Filled.MenuBook">Słownik</MudNavLink>
-            <MudNavLink Href="/rozliczenia-instruktorow" Icon="@Icons.Material.Filled.People">Rozliczenia instruktorów</MudNavLink>
-        </MudNavMenu>
-    </MudDrawer>
+    <AuthorizeView>
+        <Authorized>
+            <MudDrawer Open="true" ClipMode="DrawerClipMode.Always" Elevation="0" Class="ski-drawer apple-drawer">
+                <MudNavMenu Class="ski-nav-menu">
+                    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Wyjazdy</MudNavLink>
+                    <MudNavLink Href="/dodaj-wyjazd" Icon="@Icons.Material.Filled.Add">Dodaj wyjazd</MudNavLink>
+                    <MudNavLink Href="/slownik" Icon="@Icons.Material.Filled.MenuBook">Słownik</MudNavLink>
+                    <MudNavLink Href="/rozliczenia-instruktorow" Icon="@Icons.Material.Filled.People">Rozliczenia instruktorów</MudNavLink>
+                    <MudNavLink Href="/logi" Icon="@Icons.Material.Filled.ListAlt">Logi</MudNavLink>
+                </MudNavMenu>
+            </MudDrawer>
+        </Authorized>
+    </AuthorizeView>
     <MudMainContent Class="ski-main">
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
             @Body
@@ -36,7 +53,7 @@
     </MudMainContent>
 </MudLayout>
 
-<MudSnackbarProvider />
+<MudSnackbarProvider @rendermode="InteractiveServer" />
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
@@ -47,10 +64,21 @@
 @code {
     private bool _isDarkMode = true;
     private MudTheme _theme = new();
+    private string _displayName = "";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         var theme = HttpContextAccessor.HttpContext?.Request.Cookies["theme"];
         _isDarkMode = (theme != "light");
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var first = user.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value;
+            var last = user.FindFirst(System.Security.Claims.ClaimTypes.Surname)?.Value;
+            _displayName = string.IsNullOrEmpty(first) && string.IsNullOrEmpty(last) ? user.Identity.Name ?? "" : $"{first} {last}".Trim();
+            if (string.IsNullOrEmpty(_displayName))
+                _displayName = user.Identity.Name ?? "";
+        }
     }
 }

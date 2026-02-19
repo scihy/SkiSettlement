@@ -1,0 +1,19 @@
+@page "/login"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [AllowAnonymous]
+@inject NavigationManager Navigation
+
+<PageTitle>Logowanie - SkiSettlement</PageTitle>
+
+<div class="p-4 text-center">
+    <p>Przekierowanie do logowania…</p>
+</div>
+
+@code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+            Navigation.NavigateTo("/Account/Login", forceLoad: true);
+    }
+}

@@ -1,5 +1,7 @@
 @page "/wyjazdy/{Id:int}/edytuj"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
 @inject ITripService TripService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar

@@ -1,5 +1,7 @@
 @page "/rozliczenia-instruktorow/{Id:int}"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
 @inject IInstructorService InstructorService
 @inject IInstructorWeekService InstructorWeekService
 @inject NavigationManager Navigation
@@ -25,8 +27,8 @@ else
         <MudPaper Class="app-card pa-4" Elevation="2">
             <MudStack AlignItems="AlignItems.Center" Class="trip-header-center">
                 <MudText Typo="Typo.h5" Class="trip-header-line">@_instructor.FirstName @_instructor.LastName</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="trip-header-line">Pensja: @_instructor.BaseSalary.ToString("N2") zł + @_instructor.TotalHours.ToString("N1") h × @_instructor.HourlyRate.ToString("N2") zł/h</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="trip-header-line mt-1">Suma godzin: @_instructor.TotalHours.ToString("N1") · Kwota za godziny: @((_instructor.TotalHours * _instructor.HourlyRate).ToString("N2")) zł · Pensja podstawowa: @_instructor.BaseSalary.ToString("N2") zł</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="trip-header-line">Pensja podstawowa: @_instructor.BaseSalary.ToString("N2") zł + @_instructor.TotalHours.ToString("N1") h × @_instructor.HourlyRate.ToString("N2") zł/h</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="trip-header-line mt-1">Kwota za godziny: @_instructor.AmountFromHours.ToString("N2") zł @(_instructor.TotalSupplementAmount != 0 ? "· Dodatki łącznie: " + _instructor.TotalSupplementAmount.ToString("N2") + " zł" : "")</MudText>
                 <MudText Typo="Typo.h6" Class="mt-2">Razem: <MudText Color="Color.Success">@_instructor.TotalAmount.ToString("N2") zł</MudText></MudText>
                 <MudButton Href="@($"/api/instructors/{Id}/export")" Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Target="_blank" Class="mt-2">Eksportuj do Excel</MudButton>
             </MudStack>
@@ -35,9 +37,11 @@ else
         <MudPaper Class="app-card pa-4" Elevation="2">
             <MudText Typo="Typo.h6" Class="mb-3">Tygodnie pracy</MudText>
             <EditForm Model="_newWeek" FormName="addWeekForm" OnValidSubmit="AddWeek">
-                <MudStack Row="true" Spacing="2" Class="mb-3 trip-form-row">
+                <MudStack Row="true" Spacing="2" Class="mb-3 trip-form-row" Wrap="Wrap.Wrap">
                     <MudNumericField @bind-Value="_newWeek.WeekNumber" Label="Numer tygodnia" Variant="Variant.Outlined" Min="1" Max="52" Class="trip-form-field" />
                     <MudNumericField @bind-Value="_newWeek.HoursWorked" Label="Godziny" Variant="Variant.Outlined" Min="0" Step="0.5m" Class="trip-form-field" />
+                    <MudTextField @bind-Value="_newWeek.SupplementName" Label="Nazwa dodatku (opcjonalnie)" Variant="Variant.Outlined" Placeholder="np. Premia, Dieta" Class="trip-form-field" />
+                    <MudNumericField @bind-Value="_newWeek.SupplementAmount" Label="Kwota dodatku (zł)" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
                     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">Dodaj tydzień</MudButton>
                 </MudStack>
             </EditForm>
@@ -51,9 +55,11 @@ else
                 {
                     <MudPaper Class="pa-3 mb-3" Elevation="1" Style="background: var(--mud-palette-background-grey);">
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Edytuj tydzień</MudText>
-                        <MudStack Row="true" Spacing="2">
+                        <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
                             <MudNumericField @bind-Value="_editWeek.WeekNumber" Label="Numer tygodnia" Variant="Variant.Outlined" Min="1" Max="52" Style="width: 140px;" />
                             <MudNumericField @bind-Value="_editWeek.HoursWorked" Label="Godziny" Variant="Variant.Outlined" Min="0" Step="0.5m" Style="width: 120px;" />
+                            <MudTextField @bind-Value="_editWeek.SupplementName" Label="Nazwa dodatku" Variant="Variant.Outlined" Placeholder="np. Premia" Style="min-width: 140px;" />
+                            <MudNumericField @bind-Value="_editWeek.SupplementAmount" Label="Kwota dodatku (zł)" Variant="Variant.Outlined" Min="0" Step="0.01m" Style="width: 120px;" />
                             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveEditWeek">Zapisz</MudButton>
                             <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditWeek">Anuluj</MudButton>
                         </MudStack>
@@ -64,6 +70,8 @@ else
                         <MudTh>Tydzień</MudTh>
                         <MudTh Style="text-align: right;">Godziny</MudTh>
                         <MudTh Style="text-align: right;">Kwota (godz. × stawka)</MudTh>
+                        <MudTh>Dodatek (nazwa)</MudTh>
+                        <MudTh Style="text-align: right;">Kwota dodatku</MudTh>
                         <MudTh Style="width: 100px;"></MudTh>
                     </HeaderContent>
                     <RowTemplate>
@@ -71,6 +79,8 @@ else
                         <MudTd DataLabel="Tydzień">Tydzień @context.WeekNumber</MudTd>
                         <MudTd DataLabel="Godziny" Style="text-align: right;">@context.HoursWorked.ToString("N1")</MudTd>
                         <MudTd DataLabel="Kwota" Style="text-align: right;">@((context.HoursWorked * _instructor.HourlyRate).ToString("N2")) zł</MudTd>
+                        <MudTd DataLabel="Dodatek">@(context.SupplementName ?? "—")</MudTd>
+                        <MudTd DataLabel="Kwota dodatku" Style="text-align: right;">@(context.SupplementAmount != 0 ? context.SupplementAmount.ToString("N2") + " zł" : "—")</MudTd>
                         <MudTd>
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => StartEditWeek(w))" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteWeek(w))" />
@@ -123,13 +133,13 @@ else
         await InstructorWeekService.CreateAsync(_newWeek);
         Snackbar.Add("Tydzień dodany.", Severity.Success);
         await LoadWeeks();
-        _newWeek = new InstructorWeek { WeekNumber = _weeks.Any() ? _weeks.Max(w => w.WeekNumber) + 1 : 1 };
+        _newWeek = new InstructorWeek { WeekNumber = _weeks.Any() ? _weeks.Max(w => w.WeekNumber) + 1 : 1, SupplementName = null, SupplementAmount = 0 };
     }
 
     private void StartEditWeek(InstructorWeek week)
     {
         _editingWeekId = week.Id;
-        _editWeek = new InstructorWeek { Id = week.Id, InstructorId = week.InstructorId, WeekNumber = week.WeekNumber, HoursWorked = week.HoursWorked };
+        _editWeek = new InstructorWeek { Id = week.Id, InstructorId = week.InstructorId, WeekNumber = week.WeekNumber, HoursWorked = week.HoursWorked, SupplementName = week.SupplementName, SupplementAmount = week.SupplementAmount };
     }
 
     private void CancelEditWeek()

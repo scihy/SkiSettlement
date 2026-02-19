@@ -7,10 +7,12 @@ namespace SkiSettlement.Services;
 public class TripService : ITripService
 {
     private readonly AppDbContext _context;
+    private readonly IAuditLogService _auditLog;
 
-    public TripService(AppDbContext context)
+    public TripService(AppDbContext context, IAuditLogService auditLog)
     {
         _context = context;
+        _auditLog = auditLog;
     }
 
     public async Task<IReadOnlyList<Trip>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -53,6 +55,7 @@ public class TripService : ITripService
         trip.CreatedAt = DateTime.UtcNow;
         _context.Trips.Add(trip);
         await _context.SaveChangesAsync(cancellationToken);
+        await _auditLog.LogAsync("Dodano", "Wyjazd", trip.Id, $"Wyjazd: {trip.Name}", cancellationToken);
         return trip;
     }
 
@@ -68,6 +71,7 @@ public class TripService : ITripService
         existing.DateFrom = trip.DateFrom;
         existing.DateTo = trip.DateTo;
         await _context.SaveChangesAsync(cancellationToken);
+        await _auditLog.LogAsync("Zmieniono", "Wyjazd", trip.Id, $"Wyjazd: {trip.Name}", cancellationToken);
         return true;
     }
 
@@ -76,9 +80,10 @@ public class TripService : ITripService
         var trip = await _context.Trips.FindAsync([id], cancellationToken);
         if (trip is null)
             return false;
-
+        var desc = $"Wyjazd: {trip.Name}";
         _context.Trips.Remove(trip);
         await _context.SaveChangesAsync(cancellationToken);
+        await _auditLog.LogAsync("Usunięto", "Wyjazd", id, desc, cancellationToken);
         return true;
     }
 }

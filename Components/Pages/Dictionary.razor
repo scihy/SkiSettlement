@@ -1,5 +1,7 @@
 @page "/slownik"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
 @inject IDictionaryService DictionaryService
 @inject ICategoryService CategoryService
 @inject ISnackbar Snackbar

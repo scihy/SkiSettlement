@@ -1,0 +1,16 @@
+@page "/logout"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using SkiSettlement.Data.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+
+<PageTitle>Wylogowanie - SkiSettlement</PageTitle>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await SignInManager.SignOutAsync();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

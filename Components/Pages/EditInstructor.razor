@@ -1,5 +1,7 @@
 @page "/rozliczenia-instruktorow/edytuj/{Id:int}"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
 @inject IInstructorService InstructorService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar

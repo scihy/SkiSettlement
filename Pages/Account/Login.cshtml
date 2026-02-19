@@ -1,0 +1,50 @@
+@page
+@model SkiSettlement.Pages.Account.LoginModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Logowanie - SkiSettlement";
+}
+<!DOCTYPE html>
+<html lang="pl" class="app-dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/app.css" />
+</head>
+<body>
+    <div class="page-hero" style="padding: 2rem 1rem; text-align: center;">
+        <h1>Logowanie</h1>
+        <p>Zaloguj się e-mailem i hasłem.</p>
+    </div>
+
+    <div class="app-card pa-4" style="max-width: 400px; margin: 0 auto; padding: 1.5rem;">
+        <form method="post" asp-antiforgery="true">
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label asp-for="Input.Email" style="display: block; margin-bottom: 0.25rem; color: var(--apple-secondary); font-size: 0.875rem;"></label>
+                    <input asp-for="Input.Email" type="email" required
+                           style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--apple-border); border-radius: 0.5rem; background: var(--apple-card); color: var(--apple-heading); box-sizing: border-box;" />
+                    <span asp-validation-for="Input.Email" style="color: var(--mud-palette-error); font-size: 0.75rem;"></span>
+                </div>
+                <div>
+                    <label asp-for="Input.Password" style="display: block; margin-bottom: 0.25rem; color: var(--apple-secondary); font-size: 0.875rem;"></label>
+                    <input asp-for="Input.Password" type="password" required
+                           style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--apple-border); border-radius: 0.5rem; background: var(--apple-card); color: var(--apple-heading); box-sizing: border-box;" />
+                    <span asp-validation-for="Input.Password" style="color: var(--mud-palette-error); font-size: 0.75rem;"></span>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                {
+                    <p style="color: var(--mud-palette-error); font-size: 0.875rem;">@Model.ErrorMessage</p>
+                }
+                <button type="submit" style="width: 100%; padding: 0.6rem 1rem; background: var(--apple-accent); color: #fff; border: none; border-radius: 9999px; font-weight: 600; cursor: pointer;">
+                    Zaloguj się
+                </button>
+                <p style="text-align: center; font-size: 0.875rem; color: var(--apple-secondary);">
+                    Nie masz konta? <a href="/rejestracja" style="color: var(--apple-accent);">Zarejestruj się</a>
+                </p>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

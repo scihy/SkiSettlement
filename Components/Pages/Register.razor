@@ -1,0 +1,93 @@
+@page "/rejestracja"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using SkiSettlement.Data.Models
+@attribute [AllowAnonymous]
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Rejestracja - SkiSettlement</PageTitle>
+
+<div class="page-hero">
+    <h1>Rejestracja</h1>
+    <p>Utwórz konto: imię, nazwisko, e-mail i hasło.</p>
+</div>
+
+<MudPaper Class="app-card pa-4" Elevation="2" Style="max-width: 400px; margin: 0 auto;">
+    <EditForm Model="_model" OnValidSubmit="OnSubmit">
+        <DataAnnotationsValidator />
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_model.FirstName" Label="Imię" Variant="Variant.Outlined" Required="true" />
+            <MudTextField @bind-Value="_model.LastName" Label="Nazwisko" Variant="Variant.Outlined" Required="true" />
+            <MudTextField @bind-Value="_model.Email" Label="E-mail" Variant="Variant.Outlined" InputType="InputType.Email" Required="true" />
+            <MudTextField @bind-Value="_model.Password" Label="Hasło" Variant="Variant.Outlined" InputType="InputType.Password" Required="true" />
+            <MudTextField @bind-Value="_model.ConfirmPassword" Label="Potwierdź hasło" Variant="Variant.Outlined" InputType="InputType.Password" Required="true" />
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="_loading">
+                Zarejestruj się
+            </MudButton>
+            <MudText Typo="Typo.body2" Class="text-center">
+                Masz już konto? <MudLink Href="/login">Zaloguj się</MudLink>
+            </MudText>
+        </MudStack>
+    </EditForm>
+</MudPaper>
+
+@code {
+    private RegisterModel _model = new();
+    private string? _error;
+    private bool _loading;
+
+    private async Task OnSubmit()
+    {
+        _error = null;
+        if (_model.Password != _model.ConfirmPassword)
+        {
+            _error = "Hasła muszą być identyczne.";
+            return;
+        }
+        if (_model.Password.Length < 6)
+        {
+            _error = "Hasło musi mieć co najmniej 6 znaków.";
+            return;
+        }
+        _loading = true;
+        try
+        {
+            var user = new ApplicationUser
+            {
+                UserName = _model.Email,
+                Email = _model.Email,
+                FirstName = _model.FirstName.Trim(),
+                LastName = _model.LastName.Trim()
+            };
+            var result = await UserManager.CreateAsync(user, _model.Password);
+            if (result.Succeeded)
+            {
+                Snackbar.Add("Konto utworzone. Zaloguj się.", Severity.Success);
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            _error = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private class RegisterModel
+    {
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

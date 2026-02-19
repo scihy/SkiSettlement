@@ -1,9 +1,10 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SkiSettlement.Data.Models;
 
 namespace SkiSettlement.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -17,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Instructor> Instructors => Set<Instructor>();
     public DbSet<InstructorWeek> InstructorWeeks => Set<InstructorWeek>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,7 +69,17 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.HoursWorked).HasPrecision(18, 2);
+            entity.Property(e => e.SupplementName).HasMaxLength(200);
+            entity.Property(e => e.SupplementAmount).HasPrecision(18, 2);
             entity.HasOne(e => e.Instructor).WithMany(i => i.Weeks).HasForeignKey(e => e.InstructorId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserName).HasMaxLength(200);
+            entity.Property(e => e.Action).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.EntityType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
         });
     }
 }

@@ -1,6 +1,19 @@
 <Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <CascadingAuthenticationState>
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <p>Brak dostępu.</p>
+                    }
+                </NotAuthorized>
+            </AuthorizeRouteView>
+        </CascadingAuthenticationState>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>

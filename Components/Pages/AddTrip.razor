@@ -1,5 +1,7 @@
 @page "/dodaj-wyjazd"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
 @inject ITripService TripService
 @inject IExpenseService ExpenseService
 @inject IIncomeService IncomeService
