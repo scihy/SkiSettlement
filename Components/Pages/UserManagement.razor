@@ -1,0 +1,148 @@
+@page "/zarzadzanie-uzytkownikami"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using SkiSettlement.Data.Models
+@attribute [Authorize(Roles = "Admin")]
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Zarządzanie użytkownikami - SkiSettlement</PageTitle>
+
+<div class="page-hero">
+    <h1>Zarządzanie użytkownikami</h1>
+    <p>Dodawanie, usuwanie, reset hasła i przypisywanie ról.</p>
+</div>
+
+<MudPaper Class="app-card pa-4" Elevation="2">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h6">Użytkownicy</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenAddUser">Dodaj użytkownika</MudButton>
+    </MudStack>
+
+    @if (_users is null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else if (_users.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">Brak użytkowników. Kliknij „Dodaj użytkownika”.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_users" Hover="true" Striped="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+            <HeaderContent>
+                <MudTh>E-mail</MudTh>
+                <MudTh>Imię</MudTh>
+                <MudTh>Nazwisko</MudTh>
+                <MudTh>Role</MudTh>
+                <MudTh Style="width: 220px;">Akcje</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                @{ var u = context.User; var rolesStr = context.RolesDisplay; }
+                <MudTd DataLabel="E-mail">@u.Email</MudTd>
+                <MudTd DataLabel="Imię">@u.FirstName</MudTd>
+                <MudTd DataLabel="Nazwisko">@u.LastName</MudTd>
+                <MudTd DataLabel="Role">@(string.IsNullOrEmpty(rolesStr) ? "—" : rolesStr)</MudTd>
+                <MudTd DataLabel="Akcje">
+                    <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" title="Reset / ustaw hasło" @onclick="@(() => OpenSetPassword(u))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Badge" Size="Size.Small" title="Przypisz role" @onclick="@(() => OpenAssignRoles(u))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => OpenDeleteConfirm(u))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    private List<UserWithRoles>? _users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        var list = new List<UserWithRoles>();
+        foreach (var user in UserManager.Users.ToList())
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            list.Add(new UserWithRoles { User = user, RolesDisplay = string.Join(", ", roles) });
+        }
+        _users = list;
+        StateHasChanged();
+    }
+
+    private async Task OpenAddUser()
+    {
+        var parameters = new DialogParameters
+        {
+            ["RoleNames"] = RoleManager.Roles.Select(r => r.Name!).ToList()
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<AddUserDialog>("Dodaj użytkownika", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Użytkownik dodany.", Severity.Success);
+            await LoadUsers();
+        }
+    }
+
+    private async Task OpenSetPassword(ApplicationUser user)
+    {
+        var parameters = new DialogParameters { ["User"] = user };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<SetPasswordDialog>("Ustaw nowe hasło", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Hasło ustawione.", Severity.Success);
+        }
+    }
+
+    private async Task OpenAssignRoles(ApplicationUser user)
+    {
+        var roles = await UserManager.GetRolesAsync(user);
+        var parameters = new DialogParameters
+        {
+            ["User"] = user,
+            ["UserRoles"] = roles.ToList(),
+            ["AllRoleNames"] = RoleManager.Roles.Select(r => r.Name!).ToList()
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<AssignRolesDialog>("Przypisz role", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Role zaktualizowane.", Severity.Success);
+            await LoadUsers();
+        }
+    }
+
+    private async Task OpenDeleteConfirm(ApplicationUser user)
+    {
+        var name = string.IsNullOrWhiteSpace(user.FirstName) && string.IsNullOrWhiteSpace(user.LastName) ? user.Email : $"{user.FirstName} {user.LastName}".Trim();
+        var result = await DialogService.ShowMessageBox("Potwierdzenie", $"Czy na pewno usunąć użytkownika \"{name}\"?", yesText: "Usuń", cancelText: "Anuluj");
+        if (result == true)
+        {
+            var deleteResult = await UserManager.DeleteAsync(user);
+            if (deleteResult.Succeeded)
+            {
+                Snackbar.Add("Użytkownik usunięty.", Severity.Success);
+                await LoadUsers();
+            }
+            else
+                Snackbar.Add(string.Join(" ", deleteResult.Errors.Select(e => e.Description)), Severity.Error);
+        }
+    }
+
+    private class UserWithRoles
+    {
+        public ApplicationUser User { get; set; } = null!;
+        public string RolesDisplay { get; set; } = "";
+    }
+}

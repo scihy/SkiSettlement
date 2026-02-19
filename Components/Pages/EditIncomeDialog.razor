@@ -9,6 +9,10 @@
         <MudStack Spacing="3">
             <MudTextField @bind-Value="_model.Description" Label="Opis" Variant="Variant.Outlined" />
             <MudNumericField @bind-Value="_model.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" />
+            <MudSelect T="bool" @bind-Value="_model.IsPaid" Label="Płatność" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem T="bool" Value="true"><MudText Style="font-weight: 600;" Color="Color.Success">Tak</MudText></MudSelectItem>
+                <MudSelectItem T="bool" Value="false"><MudText Style="font-weight: 600;" Color="Color.Error">Nie</MudText></MudSelectItem>
+            </MudSelect>
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -33,7 +37,8 @@
             Id = Income.Id,
             TripId = Income.TripId,
             Description = Income.Description,
-            Amount = Income.Amount
+            Amount = Income.Amount,
+            IsPaid = Income.IsPaid
         };
     }
 

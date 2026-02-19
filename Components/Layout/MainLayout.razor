@@ -41,7 +41,12 @@
                     <MudNavLink Href="/dodaj-wyjazd" Icon="@Icons.Material.Filled.Add">Dodaj wyjazd</MudNavLink>
                     <MudNavLink Href="/slownik" Icon="@Icons.Material.Filled.MenuBook">Słownik</MudNavLink>
                     <MudNavLink Href="/rozliczenia-instruktorow" Icon="@Icons.Material.Filled.People">Rozliczenia instruktorów</MudNavLink>
-                    <MudNavLink Href="/logi" Icon="@Icons.Material.Filled.ListAlt">Logi</MudNavLink>
+                    <AuthorizeView Roles="Admin" Context="adminView">
+                        <Authorized>
+                            <MudNavLink Href="/zarzadzanie-uzytkownikami" Icon="@Icons.Material.Filled.ManageAccounts">Zarządzanie użytkownikami</MudNavLink>
+                            <MudNavLink Href="/logi" Icon="@Icons.Material.Filled.ListAlt">Logi</MudNavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </MudNavMenu>
             </MudDrawer>
         </Authorized>

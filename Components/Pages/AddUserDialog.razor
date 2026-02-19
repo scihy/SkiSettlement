@@ -1,0 +1,108 @@
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using SkiSettlement.Data.Models
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Dodaj użytkownika</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="Submit" FormName="addUserForm">
+            <DataAnnotationsValidator />
+            <MudStack Spacing="3">
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudTextField @bind-Value="_model.FirstName" Label="Imię" Variant="Variant.Outlined" Style="min-width: 180px; flex: 1 1 0;" />
+                    <MudTextField @bind-Value="_model.LastName" Label="Nazwisko" Variant="Variant.Outlined" Style="min-width: 180px; flex: 1 1 0;" />
+                </MudStack>
+                <MudTextField @bind-Value="_model.Email" Label="E-mail" Variant="Variant.Outlined" InputType="InputType.Email" Required="true" RequiredError="Podaj e-mail" FullWidth="true" />
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudTextField @bind-Value="_model.Password" Label="Hasło" Variant="Variant.Outlined" InputType="InputType.Password" Required="true" RequiredError="Podaj hasło" Style="min-width: 180px; flex: 1 1 0;" />
+                    <MudTextField @bind-Value="_model.ConfirmPassword" Label="Potwierdź hasło" Variant="Variant.Outlined" InputType="InputType.Password" Required="true" RequiredError="Potwierdź hasło" Style="min-width: 180px; flex: 1 1 0;" />
+                </MudStack>
+                <MudSelect @bind-Value="_model.RoleName" Label="Rola" Variant="Variant.Outlined" T="string" Style="min-width: 140px;">
+                    @foreach (var r in _roleNames)
+                    {
+                        <MudSelectItem T="string" Value="@r">@r</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Anuluj</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" type="submit" form="addUserForm" Disabled="_loading">Dodaj</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<string> RoleNames { get; set; } = new();
+
+    [Inject]
+    private UserManager<ApplicationUser> UserManager { get; set; } = null!;
+
+    private List<string> _roleNames = new();
+    private AddUserModel _model = new();
+    private string? _error;
+    private bool _loading;
+
+    protected override void OnParametersSet()
+    {
+        _roleNames = RoleNames ?? new List<string>();
+        if (_roleNames.Count > 0 && string.IsNullOrEmpty(_model.RoleName))
+            _model.RoleName = _roleNames[0];
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        _error = null;
+        if (_model.Password != _model.ConfirmPassword)
+        {
+            _error = "Hasła muszą być identyczne.";
+            return;
+        }
+        _loading = true;
+        try
+        {
+            var user = new ApplicationUser
+            {
+                UserName = _model.Email,
+                Email = _model.Email,
+                FirstName = _model.FirstName?.Trim() ?? "",
+                LastName = _model.LastName?.Trim() ?? ""
+            };
+            var result = await UserManager.CreateAsync(user, _model.Password);
+            if (result.Succeeded)
+            {
+                if (!string.IsNullOrEmpty(_model.RoleName))
+                    await UserManager.AddToRoleAsync(user, _model.RoleName);
+                MudDialog.Close(DialogResult.Ok(true));
+                return;
+            }
+            _error = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private class AddUserModel
+    {
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string ConfirmPassword { get; set; } = "";
+        public string? RoleName { get; set; }
+    }
+}

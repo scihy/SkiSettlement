@@ -1,0 +1,91 @@
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using SkiSettlement.Data.Models
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Przypisz role</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="2" Class="mb-2">
+            <MudText Typo="Typo.body2">Użytkownik: <strong>@(_user?.Email)</strong></MudText>
+        </MudStack>
+        <MudStack Spacing="2">
+            @foreach (var roleName in _allRoleNames)
+            {
+                var r = roleName;
+                <MudSwitch T="bool" Label="@r" Color="Color.Primary"
+                           Value="_selectedRoles.GetValueOrDefault(r)"
+                           ValueChanged="@(v => { _selectedRoles[r] = v; })" />
+            }
+        </MudStack>
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Anuluj</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_loading">Zapisz</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public ApplicationUser User { get; set; } = null!;
+
+    [Parameter]
+    public List<string> UserRoles { get; set; } = new();
+
+    [Parameter]
+    public List<string> AllRoleNames { get; set; } = new();
+
+    [Inject]
+    private UserManager<ApplicationUser> UserManager { get; set; } = null!;
+
+    private ApplicationUser? _user;
+    private List<string> _allRoleNames = new();
+    private Dictionary<string, bool> _selectedRoles = new();
+    private string? _error;
+    private bool _loading;
+
+    protected override void OnParametersSet()
+    {
+        _user = User;
+        _allRoleNames = AllRoleNames ?? new List<string>();
+        _selectedRoles = _allRoleNames.ToDictionary(r => r, r => UserRoles?.Contains(r) ?? false);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (_user == null) return;
+        _error = null;
+        _loading = true;
+        try
+        {
+            foreach (var roleName in _allRoleNames)
+            {
+                var isInRole = await UserManager.IsInRoleAsync(_user, roleName);
+                var shouldBe = _selectedRoles.TryGetValue(roleName, out var v) && v;
+                if (shouldBe && !isInRole)
+                    await UserManager.AddToRoleAsync(_user, roleName);
+                else if (!shouldBe && isInRole)
+                    await UserManager.RemoveFromRoleAsync(_user, roleName);
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

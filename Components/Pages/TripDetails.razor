@@ -8,6 +8,7 @@
 @inject ICategoryService CategoryService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>@(_trip?.Name ?? "Wyjazd") - SkiSettlement</PageTitle>
 
@@ -73,32 +74,6 @@ else
                     }
                     else
                     {
-                        @if (_editingExpenseId.HasValue)
-                        {
-                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="background: var(--mud-palette-background-grey);">
-                                <MudText Typo="Typo.subtitle2" Class="mb-2">Edytuj koszt</MudText>
-                                <MudStack Row="true" Spacing="2" Class="trip-form-row">
-                                    <MudTextField @bind-Value="_editExpense.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
-                                    <div class="trip-category-select trip-form-field">
-                                        <label class="mud-input-label mud-input-label-outlined">Kategoria</label>
-                                        <select value="@(_editExpense.CategoryId?.ToString() ?? "")" @onchange="OnEditExpenseCategoryChange">
-                                            <option value="">—</option>
-                                            @foreach (var cat in _categories)
-                                            {
-                                                <option value="@cat.Id">@cat.Name</option>
-                                            }
-                                        </select>
-                                    </div>
-                                    <MudNumericField @bind-Value="_editExpense.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
-                                    <MudSelect T="bool" @bind-Value="_editExpense.IsPaid" Label="Płatność" Variant="Variant.Outlined" Dense="true" Class="trip-form-field" Style="min-width: 90px;">
-                                        <MudSelectItem T="bool" Value="true"><MudText Style="font-weight: 600;" Color="Color.Success">Tak</MudText></MudSelectItem>
-                                        <MudSelectItem T="bool" Value="false"><MudText Style="font-weight: 600;" Color="Color.Error">Nie</MudText></MudSelectItem>
-                                    </MudSelect>
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveEditExpense">Zapisz</MudButton>
-                                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditExpense">Anuluj</MudButton>
-                                </MudStack>
-                            </MudPaper>
-                        }
                         <MudStack Spacing="3">
                             @foreach (var group in _expensesByCategory)
                             {
@@ -124,7 +99,7 @@ else
                                                 </div>
                                             </MudTd>
                                             <MudTd>
-                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => StartEditExpense(expId))" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => OpenEditExpenseDialog(expId))" />
                                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteExpense(expId))" />
                                             </MudTd>
                                         </RowTemplate>
@@ -153,22 +128,6 @@ else
                     }
                     else
                     {
-                        @if (_editingIncomeId.HasValue)
-                        {
-                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="background: var(--mud-palette-background-grey);">
-                                <MudText Typo="Typo.subtitle2" Class="mb-2">Edytuj przychód</MudText>
-                                <MudStack Row="true" Spacing="2" Class="trip-form-row">
-                                    <MudTextField @bind-Value="_editIncome.Description" Label="Opis" Variant="Variant.Outlined" Class="trip-form-field" />
-                                    <MudNumericField @bind-Value="_editIncome.Amount" Label="Kwota" Variant="Variant.Outlined" Min="0" Step="0.01m" Class="trip-form-field" />
-                                    <MudSelect T="bool" @bind-Value="_editIncome.IsPaid" Label="Płatność" Variant="Variant.Outlined" Dense="true" Class="trip-form-field" Style="min-width: 90px;">
-                                        <MudSelectItem T="bool" Value="true"><MudText Style="font-weight: 600;" Color="Color.Success">Tak</MudText></MudSelectItem>
-                                        <MudSelectItem T="bool" Value="false"><MudText Style="font-weight: 600;" Color="Color.Error">Nie</MudText></MudSelectItem>
-                                    </MudSelect>
-                                    <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="SaveEditIncome">Zapisz</MudButton>
-                                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditIncome">Anuluj</MudButton>
-                                </MudStack>
-                            </MudPaper>
-                        }
                         <MudTable Items="@_incomes" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm" Striped="true" Hover="true">
                             <HeaderContent>
                                 <MudTh>Opis</MudTh>
@@ -189,7 +148,7 @@ else
                                     </div>
                                 </MudTd>
                                 <MudTd>
-                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => StartEditIncome(incId))" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edytuj" @onclick="@(() => OpenEditIncomeDialog(incId))" />
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" title="Usuń" @onclick="@(() => DeleteIncome(incId))" />
                                 </MudTd>
                             </RowTemplate>
@@ -248,10 +207,6 @@ else
     private List<ExpenseCategory> _categories = new();
     private Expense _newExpense = new();
     private Income _newIncome = new();
-    private int? _editingExpenseId;
-    private int? _editingIncomeId;
-    private Expense _editExpense = new();
-    private Income _editIncome = new();
     private bool _notFound;
     private decimal _totalExpenses => _expenses.Sum(e => e.Amount);
     private decimal _totalIncomes => _incomes.Sum(i => i.Amount);
@@ -319,48 +274,38 @@ else
         await LoadData();
     }
 
-    private void StartEditExpense(int expenseId)
+    private async Task OpenEditExpenseDialog(int expenseId)
     {
         var exp = _expenses.FirstOrDefault(e => e.Id == expenseId);
         if (exp is null) return;
-        _editingExpenseId = expenseId;
-        _editExpense = new Expense { Id = exp.Id, TripId = exp.TripId, Description = exp.Description, Amount = exp.Amount, CategoryId = exp.CategoryId, IsPaid = exp.IsPaid };
+        var parameters = new DialogParameters
+        {
+            ["Expense"] = exp,
+            ["Categories"] = _categories
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<EditExpenseDialog>("Edytuj koszt", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Koszt zapisany.", Severity.Success);
+            await LoadData();
+        }
     }
 
-    private void CancelEditExpense()
-    {
-        _editingExpenseId = null;
-    }
-
-    private async Task SaveEditExpense()
-    {
-        if (string.IsNullOrWhiteSpace(_editExpense.Description)) return;
-        await ExpenseService.UpdateAsync(_editExpense);
-        Snackbar.Add("Koszt zapisany.", Severity.Success);
-        _editingExpenseId = null;
-        await LoadData();
-    }
-
-    private void StartEditIncome(int incomeId)
+    private async Task OpenEditIncomeDialog(int incomeId)
     {
         var inc = _incomes.FirstOrDefault(i => i.Id == incomeId);
         if (inc is null) return;
-        _editingIncomeId = incomeId;
-        _editIncome = new Income { Id = inc.Id, TripId = inc.TripId, Description = inc.Description, Amount = inc.Amount, IsPaid = inc.IsPaid };
-    }
-
-    private void CancelEditIncome()
-    {
-        _editingIncomeId = null;
-    }
-
-    private async Task SaveEditIncome()
-    {
-        if (string.IsNullOrWhiteSpace(_editIncome.Description)) return;
-        await IncomeService.UpdateAsync(_editIncome);
-        Snackbar.Add("Przychód zapisany.", Severity.Success);
-        _editingIncomeId = null;
-        await LoadData();
+        var parameters = new DialogParameters { ["Income"] = inc };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<EditIncomeDialog>("Edytuj przychód", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Przychód zapisany.", Severity.Success);
+            await LoadData();
+        }
     }
 
     private async Task OnExpensePaidChanged(Expense expense, bool value)
@@ -381,11 +326,5 @@ else
     {
         var s = e.Value?.ToString();
         _newExpense.CategoryId = string.IsNullOrEmpty(s) ? null : int.TryParse(s, out var id) ? id : null;
-    }
-
-    private void OnEditExpenseCategoryChange(ChangeEventArgs e)
-    {
-        var s = e.Value?.ToString();
-        _editExpense.CategoryId = string.IsNullOrEmpty(s) ? null : int.TryParse(s, out var id) ? id : null;
     }
 }

@@ -69,6 +69,10 @@ using (var scope = app.Services.CreateScope())
     EnsureColumn(db, "Incomes", "IsPaid", "ALTER TABLE Incomes ADD COLUMN IsPaid INTEGER NOT NULL DEFAULT 0;");
     EnsureAuditLogTable(db);
     EnsureIdentityTables(db);
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    EnsureRolesAsync(roleManager).GetAwaiter().GetResult();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    EnsureAdminForUserAsync(userManager, "michal@winterevent.pl").GetAwaiter().GetResult();
 }
 
 static void EnsureColumn(AppDbContext db, string table, string columnName, string alterSql)
@@ -181,6 +185,24 @@ static void EnsureIdentityTables(AppDbContext db)
     EnsureColumn(db, "AspNetUsers", "LastName", "ALTER TABLE AspNetUsers ADD COLUMN LastName TEXT NOT NULL DEFAULT '';");
 }
 
+static async Task EnsureRolesAsync(RoleManager<IdentityRole> roleManager)
+{
+    foreach (var roleName in new[] { "Admin", "User" })
+    {
+        if (await roleManager.RoleExistsAsync(roleName)) continue;
+        await roleManager.CreateAsync(new IdentityRole(roleName));
+    }
+}
+
+static async Task EnsureAdminForUserAsync(UserManager<ApplicationUser> userManager, string email)
+{
+    if (string.IsNullOrWhiteSpace(email)) return;
+    var user = await userManager.FindByEmailAsync(email.Trim());
+    if (user is null) return;
+    if (await userManager.IsInRoleAsync(user, "Admin")) return;
+    await userManager.AddToRoleAsync(user, "Admin");
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -218,7 +240,7 @@ app.MapGet("/api/instructors/export", async (IInstructorService instructorServic
     var list = await instructorService.GetAllAsync();
     var bytes = excelExport.ExportAll(list);
     return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "rozliczenia-instruktorow.xlsx");
-});
+}).RequireAuthorization();
 
 app.MapGet("/api/instructors/{id:int}/export", async (int id, IInstructorService instructorService, IInstructorExcelExportService excelExport) =>
 {
@@ -229,6 +251,6 @@ app.MapGet("/api/instructors/{id:int}/export", async (int id, IInstructorService
     var fileName = $"instruktor-{id}-{instructor.LastName}_{instructor.FirstName}.xlsx".Replace(" ", "-");
     if (fileName.Length > 80) fileName = $"instruktor-{id}.xlsx";
     return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-});
+}).RequireAuthorization();
 
 app.Run();
