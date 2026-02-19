@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using System.IO;
@@ -49,9 +48,6 @@ if (!Directory.Exists(keysPath)) Directory.CreateDirectory(keysPath);
 
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
-
-// To wyłącza błąd braku usługi E-mail (Fake Email Sender)
-builder.Services.AddSingleton<IEmailSender, NoOpEmailSender>();
 
 // Serwisy biznesowe
 builder.Services.AddScoped<ITripService, TripService>();
@@ -286,8 +282,3 @@ app.MapGet("/api/instructors/{id:int}/export", async (int id, IInstructorService
 }).RequireAuthorization();
 
 app.Run();
-
-public class NoOpEmailSender : IEmailSender
-{
-    public Task SendEmailAsync(string email, string subject, string htmlMessage) => Task.CompletedTask;
-}
