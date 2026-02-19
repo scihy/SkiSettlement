@@ -15,6 +15,7 @@
 *.lastbuildstate
 
 ## Databases
+*.db
 *.db-shm
 *.db-wal
 *.sqlite

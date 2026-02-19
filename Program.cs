@@ -42,13 +42,12 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
-var keysDirectory = Path.Combine(builder.Environment.ContentRootPath, "data-keys");
-if (!Directory.Exists(keysDirectory))
-{
-    Directory.CreateDirectory(keysDirectory);
-}
+// Konfiguracja folderu na klucze sesji
+var keysPath = Path.Combine(builder.Environment.ContentRootPath, "data-keys");
+if (!Directory.Exists(keysPath)) Directory.CreateDirectory(keysPath);
+
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+    .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
 // Serwisy biznesowe
 builder.Services.AddScoped<ITripService, TripService>();
@@ -66,6 +65,25 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddMudServices();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        // UWAGA: Jeśli Twój DbContext nazywa się inaczej, zmień nazwę poniżej!
+        var context = services.GetRequiredService<AppDbContext>();
+
+        // To upewni się, że plik .db istnieje i ma wszystkie tabele z migracji
+        context.Database.Migrate();
+
+        Console.WriteLine(">>> SUKCES: Baza danych została zmigrowana i jest gotowa.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($">>> BŁĄD MIGRACJI: {ex.Message}");
+    }
+}
 
 // Zastosowanie migracji przy starcie (tworzy lub aktualizuje tabele)
 using (var scope = app.Services.CreateScope())
