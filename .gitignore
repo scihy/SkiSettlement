@@ -1,0 +1,36 @@
+## Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+
+## Build results (NAJWAŻNIEJSZE - to one zamulały Twój commit)
+[Bb]in/
+[Oo]bj/
+
+## MSBuild log files
+*.log
+*.tlog
+*.lastbuildstate
+
+## Databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+## User-specific settings & secrets
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+.env
+
+## OS generated files
+.DS_Store
+Thumbs.db
+
+## Publishing
+publish/
+*.deploy

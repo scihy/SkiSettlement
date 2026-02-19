@@ -5,6 +5,9 @@ namespace SkiSettlement.Services;
 
 public class TripExcelExportService : ITripExcelExportService
 {
+    private static readonly XLColor DelicateRed = XLColor.FromArgb(255, 235, 238);   // delikatne czerwone tło
+    private static readonly XLColor DelicateGreen = XLColor.FromArgb(232, 245, 233); // delikatne zielone tło
+
     public byte[] ExportTripDetails(Trip trip, IReadOnlyList<Expense> expenses, IReadOnlyList<Income> incomes)
     {
         using var workbook = new XLWorkbook();
@@ -12,20 +15,27 @@ public class TripExcelExportService : ITripExcelExportService
 
         int row = 1;
 
-        // Nagłówek wyjazdu
+        // Nagłówek wyjazdu – wytłuszczone, delikatne czerwone tło
         sheet.Cell(row, 1).Value = "Wyjazd";
         sheet.Cell(row, 1).Style.Font.Bold = true;
+        sheet.Cell(row, 1).Style.Fill.BackgroundColor = DelicateRed;
         row++;
         sheet.Cell(row, 1).Value = trip.Name;
+        sheet.Cell(row, 1).Style.Font.Bold = true;
+        sheet.Cell(row, 1).Style.Fill.BackgroundColor = DelicateRed;
+        sheet.Cell(row, 2).Style.Fill.BackgroundColor = DelicateRed;
         row++;
         if (!string.IsNullOrEmpty(trip.Destination))
         {
             sheet.Cell(row, 1).Value = "Cel:";
             sheet.Cell(row, 2).Value = trip.Destination;
+            sheet.Range(row, 1, row, 2).Style.Fill.BackgroundColor = DelicateRed;
             row++;
         }
         sheet.Cell(row, 1).Value = "Okres:";
         sheet.Cell(row, 2).Value = $"{trip.DateFrom:yyyy-MM-dd} – {trip.DateTo:yyyy-MM-dd}";
+        sheet.Range(row, 1, row, 2).Style.Font.Bold = true;
+        sheet.Range(row, 1, row, 2).Style.Fill.BackgroundColor = DelicateRed;
         row += 2;
 
         // Koszty wg kategorii
@@ -47,6 +57,8 @@ public class TripExcelExportService : ITripExcelExportService
         {
             sheet.Cell(row, 1).Value = group.CategoryName;
             sheet.Cell(row, 1).Style.Font.Bold = true;
+            sheet.Cell(row, 1).Style.Fill.BackgroundColor = DelicateGreen;
+            sheet.Cell(row, 2).Style.Fill.BackgroundColor = DelicateGreen;
             row++;
             sheet.Cell(row, 1).Value = "Opis";
             sheet.Cell(row, 2).Value = "Kwota";
@@ -64,7 +76,7 @@ public class TripExcelExportService : ITripExcelExportService
             sheet.Cell(row, 1).Style.Font.Bold = true;
             sheet.Cell(row, 2).Value = (double)sum;
             sheet.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00";
-            row += 2;
+            row += 2; // odstęp po kategorii
         }
 
         sheet.Cell(row, 1).Value = "Suma kosztów:";
